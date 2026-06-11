@@ -34,10 +34,38 @@ const INITIAL_SHADOW_SETTINGS: SubjectShadow = {
   opacity: 0.35,
 };
 
+const SHIPOS_SLIDES = [
+  {
+    line1: "Still copy-pasting to 5 apps?",
+    line2: "ShipOS publishes everywhere in one click.",
+    cta: "Try Free →"
+  },
+  {
+    line1: "Creators waste 3 hours/week on formatting.",
+    line2: "ShipOS gives them back in minutes.",
+    cta: "Start Free →"
+  },
+  {
+    line1: "One dashboard. Every platform. Total control.",
+    line2: "Write once. Ship everywhere with ShipOS.",
+    cta: "Get Started Free →"
+  }
+];
+
 export default function App() {
   const [originalImg, setOriginalImg] = useState<HTMLImageElement | null>(null);
   const [maskCanvas, setMaskCanvas] = useState<HTMLCanvasElement | null>(null);
   
+  // ShipOS Promo Slider State
+  const [currentPromoSlide, setCurrentPromoSlide] = useState<number>(0);
+
+  useEffect(() => {
+    const promoTimer = setInterval(() => {
+      setCurrentPromoSlide((prev) => (prev + 1) % 3);
+    }, 5500);
+    return () => clearInterval(promoTimer);
+  }, []);
+
   // PWA Support States
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallModalOpen, setIsInstallModalOpen] = useState<boolean>(false);
@@ -149,37 +177,81 @@ export default function App() {
 
   return (
     <div id="app-root-container" className="flex min-h-screen flex-col bg-[#0d0d0f] font-sans antialiased text-white select-none">
-      {/* Shipos Promo Banner */}
-      <div className="relative bg-[#09090b] border-b border-zinc-900 px-4 py-2.5 sm:py-2 text-center text-xs text-zinc-300 flex items-center justify-center gap-2 z-50 overflow-hidden">
-        {/* Ambient premium aura */}
-        <div className="absolute inset-0 bg-gradient-to-r from-zinc-950 via-[#d26e46]/5 to-zinc-950 opacity-90 pointer-events-none" />
-        <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-64 h-20 bg-[#d26e46]/10 rounded-full blur-2xl pointer-events-none" />
-        
-        <a 
-          href="https://www.myshipos.com/" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="relative group flex flex-col sm:flex-row items-center justify-center gap-x-3 gap-y-1.5 text-zinc-300 hover:text-white transition duration-200 w-full max-w-5xl"
-        >
-          {/* Authentic ShipOS Brand Badge */}
-          <div className="flex items-center gap-1.5 bg-zinc-900/90 border border-zinc-800/80 px-2.5 py-0.5 rounded-lg text-white shadow-sm transition group-hover:bg-zinc-800/90 group-hover:border-zinc-700/80 shrink-0">
-            <span className="font-sans font-bold tracking-tight text-[11px] sm:text-[12px] text-white flex items-center gap-0.5" style={{ fontFamily: "ui-sans-serif, system-ui, sans-serif" }}>
-              Ship
-              <span className="inline-flex items-center justify-center bg-[#d26e46] text-[9px] font-medium text-white px-1 rounded-[5px] h-[14px] min-w-[18px] leading-none ml-0.5">
-                OS
+      {/* ShipOS Ads Promo Banner Slider */}
+      <div id="shipos-promo-banner" className="relative bg-[#C4622D] border-b border-[#ab4f20] overflow-hidden z-50 h-10 sm:h-12 flex items-center select-none shadow-sm">
+        <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 flex items-center justify-between gap-4 h-full">
+          {/* Logo brand box */}
+          <div className="flex items-center gap-2 shrink-0">
+            <a 
+              href="https://www.myshipos.com/" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="flex items-center gap-0.5 bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded text-white shadow-sm transition-all duration-200"
+            >
+              <span className="font-sans font-black tracking-tight text-[11px] sm:text-[12px] text-white flex items-center gap-0.5" style={{ fontFamily: "ui-sans-serif, system-ui, sans-serif" }}>
+                Ship
+                <span className="inline-flex items-center justify-center bg-white text-[8px] font-bold text-[#C4622D] px-0.5 rounded-[2.5px] h-[13px] min-w-[17px] leading-none ml-0.5 shadow-sm">
+                  OS
+                </span>
               </span>
-            </span>
+            </a>
           </div>
 
-          <span className="text-[11px] sm:text-xs text-zinc-400 font-normal text-center sm:text-left">
-            Automate social posting: schedule content, generate with AI, and bulk-import posts effortlessly.
-          </span>
+          {/* Sliding feature text */}
+          <div className="flex-1 min-w-0 relative h-full flex items-center">
+            {SHIPOS_SLIDES.map((slide, idx) => {
+              const isActive = idx === currentPromoSlide;
+              return (
+                <div
+                  key={idx}
+                  className={`transition-all duration-500 transform w-full flex flex-col sm:flex-row sm:items-center sm:gap-1 text-left ${
+                    isActive
+                      ? "opacity-100 translate-y-0 scale-100 relative z-10"
+                      : "opacity-0 absolute -translate-y-2 scale-95 pointer-events-none hidden"
+                  }`}
+                >
+                  <span className="text-[10px] sm:text-[12.5px] font-bold text-white tracking-tight leading-tight whitespace-nowrap overflow-hidden text-ellipsis">
+                    {slide.line1}
+                  </span>
+                  <span className="text-[9.5px] sm:text-[12px] font-normal text-white/90 tracking-normal leading-tight hidden md:inline ml-1.5 whitespace-nowrap overflow-hidden text-ellipsis">
+                    {slide.line2}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
 
-          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#d26e46] group-hover:text-[#e4835a] transition-colors ml-1 uppercase tracking-wider shrink-0 bg-[#d26e46]/10 px-2 py-0.5 rounded border border-[#d26e46]/20 group-hover:border-[#d26e46]/40">
-            Automate Now
-            <ArrowUpRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-          </span>
-        </a>
+          {/* Indicator slider dots & CTA action button */}
+          <div className="flex items-center gap-3 shrink-0">
+            {/* Indicator Dots - tiny custom slider styling */}
+            <div id="slider-indicator-dots" className="hidden sm:flex items-center gap-1 shrink-0">
+              {[0, 1, 2].map((i) => (
+                <button
+                  key={i}
+                  id={`promo-dot-${i}`}
+                  onClick={() => setCurrentPromoSlide(i)}
+                  className={`h-0.5 cursor-pointer transition-all duration-300 rounded ${
+                    i === currentPromoSlide 
+                      ? "w-3 bg-white" 
+                      : "w-1 bg-white/40 hover:bg-white/70"
+                  }`}
+                  title={`Navigate to Feature ${i + 1}`}
+                />
+              ))}
+            </div>
+
+            {/* CTA button: White background, dark text */}
+            <a 
+              href="https://www.myshipos.com/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              id="shipos-cta-button"
+              className="inline-flex items-center justify-center bg-white hover:bg-neutral-50 active:scale-95 text-[10.5px] sm:text-[11.5px] font-bold text-[#C4622D] px-2.5 sm:px-3 py-1 sm:py-1.5 rounded shadow-sm transition-all duration-200 shrink-0"
+            >
+              <span>{SHIPOS_SLIDES[currentPromoSlide].cta}</span>
+            </a>
+          </div>
+        </div>
       </div>
 
       {/* Dynamic Header */}

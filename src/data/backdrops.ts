@@ -181,10 +181,10 @@ export const BACKDROPS: Backdrop[] = [
     textColor: 'light'
   },
   {
-    id: 'img-studio-amber',
-    name: 'Studio Amber Glow',
+    id: 'img-sunset-gradient',
+    name: 'Sunset Prism Flare',
     category: 'images',
-    value: 'https://images.unsplash.com/photo-1557683316-973673baf926?auto=format&fit=crop&w=1200&q=85',
+    value: 'https://images.unsplash.com/photo-1618556450991-2f1af64e8191?auto=format&fit=crop&w=1200&q=85',
     textColor: 'light'
   },
   {
@@ -193,6 +193,55 @@ export const BACKDROPS: Backdrop[] = [
     category: 'images',
     value: 'https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&w=1200&q=85',
     textColor: 'light'
+  },
+  {
+    id: 'img-studio-amber',
+    name: 'Studio Amber Glow',
+    category: 'images',
+    value: 'https://images.unsplash.com/photo-1557683316-973673baf926?auto=format&fit=crop&w=1200&q=85',
+    textColor: 'light'
+  },
+  {
+    id: 'img-aurora-glow',
+    name: 'Eleni Golden Aura',
+    category: 'images',
+    value: 'https://images.unsplash.com/photo-1618005198143-e5283b519a7f?auto=format&fit=crop&w=1200&q=85',
+    textColor: 'light'
+  },
+  {
+    id: 'img-warm-bokeh',
+    name: 'Bokeh Golden Hour',
+    category: 'images',
+    value: 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&w=1200&q=85',
+    textColor: 'light'
+  },
+  {
+    id: 'img-abstract-paint',
+    name: 'Acrylic Soft Fusion',
+    category: 'images',
+    value: 'https://images.unsplash.com/photo-1541701494587-cb58502866ab?auto=format&fit=crop&w=1200&q=85',
+    textColor: 'light'
+  },
+  {
+    id: 'img-sunbeams-dust',
+    name: 'Atmospheric Sunbeams',
+    category: 'images',
+    value: 'https://images.unsplash.com/photo-1608501078713-8e445a709b39?auto=format&fit=crop&w=1200&q=85',
+    textColor: 'light'
+  },
+  {
+    id: 'img-fluid-waves',
+    name: 'Fluid Golden Ripple',
+    category: 'images',
+    value: 'https://images.unsplash.com/photo-1574169208507-84376144848b?auto=format&fit=crop&w=1200&q=85',
+    textColor: 'dark'
+  },
+  {
+    id: 'img-minimalist-day',
+    name: 'Minimal Daylight Beam',
+    category: 'images',
+    value: 'https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=1200&q=85',
+    textColor: 'dark'
   },
   {
     id: 'img-organic-clay',
@@ -213,13 +262,6 @@ export const BACKDROPS: Backdrop[] = [
     name: 'Warm Japandi Corner',
     category: 'images',
     value: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=1200&q=85',
-    textColor: 'dark'
-  },
-  {
-    id: 'img-minimalist-arch',
-    name: 'Arch Daylight Studio',
-    category: 'images',
-    value: 'https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=1200&q=85',
     textColor: 'dark'
   }
 ];
