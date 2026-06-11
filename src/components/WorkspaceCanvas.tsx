@@ -175,7 +175,7 @@ export default function WorkspaceCanvas({
   };
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center p-4 lg:p-8">
+    <div className="flex flex-1 flex-col items-center justify-center p-3 sm:p-4 lg:p-8">
       {/* Aspect Wrapper Box */}
       <div className="w-full max-w-lg md:max-w-xl">
         <div

@@ -4,7 +4,6 @@ import { BACKDROPS, SHADOW_OVERLAYS } from './data/backdrops';
 import ImageUploader from './components/ImageUploader';
 import WorkspaceCanvas from './components/WorkspaceCanvas';
 import ControlPanel from './components/ControlPanel';
-import PrecisionEraser from './components/PrecisionEraser';
 import { initMaskFromTransparentImage } from './utils/mask-utils';
 import { Sparkles, Sliders, Layers, RefreshCw, Smartphone, Monitor, ChevronRight, X, Share2, Plus } from 'lucide-react';
 
@@ -92,7 +91,6 @@ export default function App() {
 
   // Operational states
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
-  const [isEraserOpen, setIsEraserOpen] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleImageUploaded = (file: File) => {
@@ -202,7 +200,7 @@ export default function App() {
       {/* Main Body */}
       <div className="flex flex-1 flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
         {/* Left Side: Upload Zone / Live Canvas Compositor Preview */}
-        <main className="flex flex-1 flex-col justify-between bg-zinc-950/30">
+        <main className="sticky top-0 lg:static z-20 flex flex-col justify-between bg-zinc-950 lg:bg-zinc-950/30 border-b border-zinc-900 lg:border-b-0 shrink-0 lg:shrink lg:flex-1">
           {!originalImg ? (
             <div className="flex flex-1 items-center justify-center p-6 md:p-12">
               <div className="w-full max-w-sm rounded-[28px] border border-zinc-900 bg-[#121214] p-8 shadow-2xl relative overflow-hidden">
@@ -274,7 +272,6 @@ export default function App() {
               setShadowSettings={setShadowSettings}
               aspectRatio={aspectRatio}
               setAspectRatio={setAspectRatio}
-              onOpenEraser={() => setIsEraserOpen(true)}
               onResetLayout={handleResetLayout}
               originalImg={originalImg}
               maskCanvas={maskCanvas}
@@ -283,19 +280,7 @@ export default function App() {
         )}
       </div>
 
-      {/* Manual rubylith painter fine-tuning modal */}
-      {isEraserOpen && originalImg && maskCanvas && (
-        <PrecisionEraser
-          isOpen={isEraserOpen}
-          onClose={() => {
-            setIsEraserOpen(false);
-            setMaskTrigger((prev) => prev + 1);
-          }}
-          originalImg={originalImg}
-          maskCanvas={maskCanvas}
-          onMaskUpdated={() => setMaskTrigger((prev) => prev + 1)}
-        />
-      )}
+
 
       {/* PWA Save to Home Screen Modal Assistant */}
       {isInstallModalOpen && (

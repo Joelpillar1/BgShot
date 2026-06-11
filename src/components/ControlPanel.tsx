@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Backdrop, ShadowOverlay, SubjectPlacement, SubjectEnhancement, SubjectShadow } from '../types';
 import { SHADOW_OVERLAYS } from '../data/backdrops';
-import { Sliders, Sun, Palette, Sparkles, Download, Layers, Compass, FlipHorizontal, Eye, RefreshCw, X } from 'lucide-react';
+import { Sliders, Sun, Palette, Sparkles, Download, Layers, FlipHorizontal, Eye, RefreshCw, X } from 'lucide-react';
 import BackdropSelector from './BackdropSelector';
 
 interface ControlPanelProps {
@@ -17,7 +17,6 @@ interface ControlPanelProps {
   setShadowSettings: React.Dispatch<React.SetStateAction<SubjectShadow>>;
   aspectRatio: string;
   setAspectRatio: (ratio: string) => void;
-  onOpenEraser: () => void;
   onResetLayout: () => void;
   originalImg: HTMLImageElement | null;
   maskCanvas: HTMLCanvasElement | null;
@@ -36,7 +35,6 @@ export default function ControlPanel({
   setShadowSettings,
   aspectRatio,
   setAspectRatio,
-  onOpenEraser,
   onResetLayout,
   originalImg,
   maskCanvas,
@@ -334,29 +332,6 @@ export default function ControlPanel({
               selectedBackdrop={selectedBackdrop}
               onSelectBackdrop={onSelectBackdrop}
             />
-
-            {/* Ambient Leaf shadows list */}
-            <div className="border-t border-zinc-900 pt-4">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Natural Light Casts</span>
-              <div className="mt-2.5 grid grid-cols-2 gap-2 text-xs">
-                {SHADOW_OVERLAYS.map((sov) => (
-                  <button
-                    key={sov.id}
-                    onClick={() => onSelectShadow(sov)}
-                    className={`flex flex-col items-start gap-0.5 rounded-xl border p-3 text-left transition ${
-                      selectedShadow.id === sov.id
-                        ? 'border-white bg-white/5 text-white font-medium'
-                        : 'border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-white'
-                    }`}
-                  >
-                    <span className="text-[11px]">{sov.name}</span>
-                    <span className="text-[9px] text-zinc-500">
-                      {sov.intensity > 0 ? `${Math.round(sov.intensity * 100)}% intensity` : 'Pure soft-light'}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
         )}
 
@@ -700,16 +675,6 @@ export default function ControlPanel({
 
       {/* Footer Actions */}
       <div className="p-6 border-t border-zinc-900 bg-zinc-950 flex flex-col gap-3.5">
-        {originalImg && (
-          <button
-            onClick={onOpenEraser}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-800 hover:border-zinc-700 bg-zinc-900/60 p-3 text-xs font-semibold uppercase tracking-wider text-white transition duration-300 active:scale-98"
-          >
-            <Compass className="h-4 w-4 text-amber-400 animate-pulse" />
-            Manual Edge Clean-Up
-          </button>
-        )}
-
         <button
           onClick={handleExportPNG}
           disabled={!originalImg || isExporting}
