@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Backdrop, ShadowOverlay, SubjectPlacement, SubjectEnhancement, SubjectShadow } from '../types';
 import { SHADOW_OVERLAYS } from '../data/backdrops';
-import { Sliders, Sun, Palette, Sparkles, Download, Layers, FlipHorizontal, Eye, RefreshCw, X } from 'lucide-react';
+import { Sliders, Sun, Palette, Sparkles, Download, Layers, FlipHorizontal, Eye, RefreshCw, X, ChevronDown, ChevronUp } from 'lucide-react';
 import BackdropSelector from './BackdropSelector';
 
 interface ControlPanelProps {
@@ -42,13 +42,15 @@ export default function ControlPanel({
   const [activeTab, setActiveTab] = useState<'backdrop' | 'filters' | 'shadow'>('backdrop');
   const [isExporting, setIsExporting] = useState(false);
   const [exportedImageUrl, setExportedImageUrl] = useState<string | null>(null);
+  const [showPosition, setShowPosition] = useState(false);
+  const [showColorAdjustments, setShowColorAdjustments] = useState(false);
 
   const handleExportPNG = () => {
     if (!originalImg || !maskCanvas) return;
     setIsExporting(true);
 
     // Run export in an animation frame so UI states can update first
-    requestAnimationFrame(() => {
+    requestAnimationFrame(async () => {
       try {
         // Build the subject canvas
         const subjectCanvas = document.createElement('canvas');
@@ -127,8 +129,38 @@ export default function ControlPanel({
           return;
         }
 
-        // 1. Draw Backdrop background (solid vs gradient)
-        if (selectedBackdrop.value.includes('linear-gradient')) {
+        // 1. Draw Backdrop background (image vs solid vs gradient)
+        if (selectedBackdrop.category === 'images') {
+          try {
+            const bgImg = await new Promise<HTMLImageElement>((resolve, reject) => {
+              const img = new Image();
+              img.crossOrigin = 'anonymous';
+              img.onload = () => resolve(img);
+              img.onerror = (e) => reject(e);
+              img.src = selectedBackdrop.value;
+            });
+            // Cover scaling calculation for export dimension
+            const bgAspect = bgImg.width / bgImg.height;
+            const destAspect = exportW / exportH;
+            let srcX = 0, srcY = 0, srcW = bgImg.width, srcH = bgImg.height;
+            if (bgAspect > destAspect) {
+              srcW = bgImg.height * destAspect;
+              srcX = (bgImg.width - srcW) / 2;
+            } else {
+              srcH = bgImg.width / destAspect;
+              srcY = (bgImg.height - srcH) / 2;
+            }
+            ctx.drawImage(bgImg, srcX, srcY, srcW, srcH, 0, 0, exportW, exportH);
+          } catch (e) {
+            console.error('Failed to pre-fetch backdrop image for export', e);
+            // safe fallback to terracota brand color
+            const fallbackGradient = ctx.createLinearGradient(0, 0, exportW, exportH);
+            fallbackGradient.addColorStop(0, '#E2906E');
+            fallbackGradient.addColorStop(1, '#D46038');
+            ctx.fillStyle = fallbackGradient;
+            ctx.fillRect(0, 0, exportW, exportH);
+          }
+        } else if (selectedBackdrop.value.includes('linear-gradient')) {
           // Parse hexes
           const hexes = selectedBackdrop.value.match(/#[0-9A-Fa-f]{6}/g) || ['#F4F4F7', '#E3E4E6'];
           const gradient = ctx.createLinearGradient(0, 0, exportW, exportH);
@@ -145,10 +177,11 @@ export default function ControlPanel({
             gradient.addColorStop(1, hexes[0]);
           }
           ctx.fillStyle = gradient;
+          ctx.fillRect(0, 0, exportW, exportH);
         } else {
           ctx.fillStyle = selectedBackdrop.value;
+          ctx.fillRect(0, 0, exportW, exportH);
         }
-        ctx.fillRect(0, 0, exportW, exportH);
 
         // 2. Draw spotlight overlay if active
         if (selectedBackdrop.spotlight) {
@@ -357,7 +390,7 @@ export default function ControlPanel({
 
             {/* Subject Size & Position Controls */}
             <div className="flex flex-col gap-4 rounded-2xl border border-zinc-900 bg-zinc-950/40 p-4">
-              <span className="text-xs font-bold text-zinc-300 tracking-wide uppercase">Image Size & Position</span>
+              <span className="text-xs font-bold text-zinc-300 tracking-wide uppercase">Image Size</span>
               
               {/* Scale / Size control */}
               <div className="flex flex-col gap-1.5">
@@ -400,70 +433,90 @@ export default function ControlPanel({
                 </button>
               </div>
 
-              {/* Horizontal Position (X) */}
-              <div className="flex flex-col gap-1.5 mt-1">
-                <div className="flex items-center justify-between text-xs text-zinc-400">
-                  <span>Horizontal Position (X)</span>
-                  <span className="font-mono text-xs text-white">
-                    {placement.x > 0 ? `+${Math.round(placement.x)}` : Math.round(placement.x)}%
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min="-150"
-                  max="150"
-                  step="1"
-                  value={placement.x}
-                  onChange={(e) => setPlacement((prev) => ({ ...prev, x: parseInt(e.target.value) }))}
-                  className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-zinc-800 accent-white"
-                />
-              </div>
+              {/* Collapsible Position Controls */}
+              <div className="border-t border-zinc-900/60 pt-3.5 mt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowPosition(!showPosition)}
+                  className="flex w-full items-center justify-between text-xs font-semibold text-zinc-400 hover:text-white transition"
+                >
+                  <span>Position & Rotation</span>
+                  {showPosition ? (
+                    <ChevronUp className="h-4 w-4 text-zinc-500" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-zinc-500" />
+                  )}
+                </button>
 
-              {/* Vertical Position (Y) */}
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-center justify-between text-xs text-zinc-400">
-                  <span>Vertical Position (Y)</span>
-                  <span className="font-mono text-xs text-white">
-                    {placement.y > 0 ? `+${Math.round(placement.y)}` : Math.round(placement.y)}%
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min="-150"
-                  max="150"
-                  step="1"
-                  value={placement.y}
-                  onChange={(e) => setPlacement((prev) => ({ ...prev, y: parseInt(e.target.value) }))}
-                  className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-zinc-800 accent-white"
-                />
-              </div>
+                {showPosition && (
+                  <div className="flex flex-col gap-4 mt-3 animate-slide-down">
+                    {/* Horizontal Position (X) */}
+                    <div className="flex flex-col gap-1.5 mt-1">
+                      <div className="flex items-center justify-between text-xs text-zinc-400">
+                        <span>Horizontal Position (X)</span>
+                        <span className="font-mono text-xs text-white">
+                          {placement.x > 0 ? `+${Math.round(placement.x)}` : Math.round(placement.x)}%
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="-150"
+                        max="150"
+                        step="1"
+                        value={placement.x}
+                        onChange={(e) => setPlacement((prev) => ({ ...prev, x: parseInt(e.target.value) }))}
+                        className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-zinc-800 accent-white"
+                      />
+                    </div>
 
-              {/* Rotation */}
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-center justify-between text-xs text-zinc-400">
-                  <span>Rotation</span>
-                  <span className="font-mono text-xs text-white">
-                    {Math.round(placement.rotation)}°
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="360"
-                  step="1"
-                  value={placement.rotation}
-                  onChange={(e) => setPlacement((prev) => ({ ...prev, rotation: parseInt(e.target.value) }))}
-                  className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-zinc-800 accent-white"
-                />
-              </div>
+                    {/* Vertical Position (Y) */}
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center justify-between text-xs text-zinc-400">
+                        <span>Vertical Position (Y)</span>
+                        <span className="font-mono text-xs text-white">
+                          {placement.y > 0 ? `+${Math.round(placement.y)}` : Math.round(placement.y)}%
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="-150"
+                        max="150"
+                        step="1"
+                        value={placement.y}
+                        onChange={(e) => setPlacement((prev) => ({ ...prev, y: parseInt(e.target.value) }))}
+                        className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-zinc-800 accent-white"
+                      />
+                    </div>
 
-              {/* Centering Quick Action */}
-              <button
-                onClick={() => setPlacement((prev) => ({ ...prev, x: 0, y: 0, rotation: 0 }))}
-                className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800/80 py-1.5 text-xs text-zinc-200 transition"
-              >
-                Reset Position & Angle
-              </button>
+                    {/* Rotation */}
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center justify-between text-xs text-zinc-400">
+                        <span>Rotation</span>
+                        <span className="font-mono text-xs text-white">
+                          {Math.round(placement.rotation)}°
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="360"
+                        step="1"
+                        value={placement.rotation}
+                        onChange={(e) => setPlacement((prev) => ({ ...prev, rotation: parseInt(e.target.value) }))}
+                        className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-zinc-800 accent-white"
+                      />
+                    </div>
+
+                    {/* Centering Quick Action */}
+                    <button
+                      onClick={() => setPlacement((prev) => ({ ...prev, x: 0, y: 0, rotation: 0 }))}
+                      className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800/80 py-1.5 text-xs text-zinc-200 transition"
+                    >
+                      Reset Position & Angle
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Corner Roundedness / Border Radius Control */}
@@ -519,76 +572,96 @@ export default function ControlPanel({
               </div>
             </div>
 
-            {/* Brightness Adjustment */}
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between text-xs text-zinc-400">
-                <span>Exposure / Lighting</span>
-                <span className="font-mono text-white">{Math.round((enhancement.brightness - 1) * 100)}%</span>
-              </div>
-              <input
-                type="range"
-                min="0.5"
-                max="1.5"
-                step="0.05"
-                value={enhancement.brightness}
-                onChange={(e) => setEnhancement((prev) => ({ ...prev, brightness: parseFloat(e.target.value) }))}
-                className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-zinc-800 accent-white"
-              />
-            </div>
+            {/* Collapsible Color Grades sliders under image corner */}
+            <div className="flex flex-col gap-4 rounded-2xl border border-zinc-900 bg-zinc-950/40 p-4">
+              <button
+                type="button"
+                onClick={() => setShowColorAdjustments(!showColorAdjustments)}
+                className="flex w-full items-center justify-between text-xs font-bold text-zinc-300 tracking-wide uppercase transition"
+              >
+                <span>Color & Lighting Grades</span>
+                {showColorAdjustments ? (
+                  <ChevronUp className="h-4 w-4 text-zinc-400" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-zinc-400" />
+                )}
+              </button>
 
-            {/* Contrast Adjustment */}
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between text-xs text-zinc-400">
-                <span>Contrast</span>
-                <span className="font-mono text-white">{Math.round((enhancement.contrast - 1) * 100)}%</span>
-              </div>
-              <input
-                type="range"
-                min="0.5"
-                max="1.5"
-                step="0.05"
-                value={enhancement.contrast}
-                onChange={(e) => setEnhancement((prev) => ({ ...prev, contrast: parseFloat(e.target.value) }))}
-                className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-zinc-800 accent-white"
-              />
-            </div>
+              {showColorAdjustments && (
+                <div className="flex flex-col gap-5 mt-2 animate-slide-down">
+                  {/* Brightness Adjustment */}
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between text-xs text-zinc-400">
+                      <span>Exposure / Lighting</span>
+                      <span className="font-mono text-white">{Math.round((enhancement.brightness - 1) * 100)}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0.5"
+                      max="1.5"
+                      step="0.05"
+                      value={enhancement.brightness}
+                      onChange={(e) => setEnhancement((prev) => ({ ...prev, brightness: parseFloat(e.target.value) }))}
+                      className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-zinc-800 accent-white"
+                    />
+                  </div>
 
-            {/* Saturation Adjustment */}
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between text-xs text-zinc-400">
-                <span>Color Saturation</span>
-                <span className="font-mono text-white">{Math.round(enhancement.saturation * 100)}%</span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="2"
-                step="0.1"
-                value={enhancement.saturation}
-                onChange={(e) => setEnhancement((prev) => ({ ...prev, saturation: parseFloat(e.target.value) }))}
-                className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-zinc-800 accent-white"
-              />
-            </div>
+                  {/* Contrast Adjustment */}
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between text-xs text-zinc-400">
+                      <span>Contrast</span>
+                      <span className="font-mono text-white">{Math.round((enhancement.contrast - 1) * 100)}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0.5"
+                      max="1.5"
+                      step="0.05"
+                      value={enhancement.contrast}
+                      onChange={(e) => setEnhancement((prev) => ({ ...prev, contrast: parseFloat(e.target.value) }))}
+                      className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-zinc-800 accent-white"
+                    />
+                  </div>
 
-            {/* Temperature Shift */}
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between text-xs text-zinc-400">
-                <span>Color Warmth / Atmosphere</span>
-                <span className="font-mono text-white">{enhancement.temperature > 0 ? `+${enhancement.temperature}` : enhancement.temperature}</span>
-              </div>
-              <input
-                type="range"
-                min="-60"
-                max="60"
-                step="2"
-                value={enhancement.temperature}
-                onChange={(e) => setEnhancement((prev) => ({ ...prev, temperature: parseInt(e.target.value) }))}
-                className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-gradient-to-r from-blue-500 via-zinc-800 to-amber-500 appearance-none accent-white"
-              />
-              <div className="flex justify-between text-[9px] text-zinc-500 font-medium">
-                <span>Studio Cool Blue</span>
-                <span>Warm Sunbeams</span>
-              </div>
+                  {/* Saturation Adjustment */}
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between text-xs text-zinc-400">
+                      <span>Color Saturation</span>
+                      <span className="font-mono text-white">{Math.round(enhancement.saturation * 100)}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="2"
+                      step="0.1"
+                      value={enhancement.saturation}
+                      onChange={(e) => setEnhancement((prev) => ({ ...prev, saturation: parseFloat(e.target.value) }))}
+                      className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-zinc-800 accent-white"
+                    />
+                  </div>
+
+                  {/* Temperature Shift */}
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between text-xs text-zinc-400">
+                      <span>Color Warmth / Atmosphere</span>
+                      <span className="font-mono text-white">{enhancement.temperature > 0 ? `+${enhancement.temperature}` : enhancement.temperature}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="-60"
+                      max="60"
+                      step="2"
+                      value={enhancement.temperature}
+                      onChange={(e) => setEnhancement((prev) => ({ ...prev, temperature: parseInt(e.target.value) }))}
+                      className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-gradient-to-r from-blue-500 via-zinc-800 to-amber-500 appearance-none accent-white"
+                    />
+                    <div className="flex justify-between text-[9px] text-zinc-500 font-medium">
+                      <span>Studio Cool Blue</span>
+                      <span>Warm Sunbeams</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

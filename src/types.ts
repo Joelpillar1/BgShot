@@ -1,7 +1,7 @@
 export interface Backdrop {
   id: string;
   name: string;
-  category: 'solids' | 'gradients' | 'presets';
+  category: 'solids' | 'gradients' | 'presets' | 'images';
   value: string; // Hex color, CSS gradient, or SVG texture representation
   spotlight?: boolean; // If true, overlay a soft radial spotlight
   textColor: 'light' | 'dark';

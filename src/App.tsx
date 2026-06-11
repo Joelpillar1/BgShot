@@ -5,7 +5,7 @@ import ImageUploader from './components/ImageUploader';
 import WorkspaceCanvas from './components/WorkspaceCanvas';
 import ControlPanel from './components/ControlPanel';
 import { initMaskFromTransparentImage } from './utils/mask-utils';
-import { Sparkles, Sliders, Layers, RefreshCw, Smartphone, Monitor, ChevronRight, X, Share2, Plus } from 'lucide-react';
+import { Sparkles, Sliders, Layers, RefreshCw, Smartphone, Monitor, ChevronRight, X, Share2, Plus, ArrowUpRight } from 'lucide-react';
 
 const INITIAL_PLACEMENT: SubjectPlacement = {
   x: 0,
@@ -149,6 +149,39 @@ export default function App() {
 
   return (
     <div id="app-root-container" className="flex min-h-screen flex-col bg-[#0d0d0f] font-sans antialiased text-white select-none">
+      {/* Shipos Promo Banner */}
+      <div className="relative bg-[#09090b] border-b border-zinc-900 px-4 py-2.5 sm:py-2 text-center text-xs text-zinc-300 flex items-center justify-center gap-2 z-50 overflow-hidden">
+        {/* Ambient premium aura */}
+        <div className="absolute inset-0 bg-gradient-to-r from-zinc-950 via-[#d26e46]/5 to-zinc-950 opacity-90 pointer-events-none" />
+        <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-64 h-20 bg-[#d26e46]/10 rounded-full blur-2xl pointer-events-none" />
+        
+        <a 
+          href="https://www.myshipos.com/" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="relative group flex flex-col sm:flex-row items-center justify-center gap-x-3 gap-y-1.5 text-zinc-300 hover:text-white transition duration-200 w-full max-w-5xl"
+        >
+          {/* Authentic ShipOS Brand Badge */}
+          <div className="flex items-center gap-1.5 bg-zinc-900/90 border border-zinc-800/80 px-2.5 py-0.5 rounded-lg text-white shadow-sm transition group-hover:bg-zinc-800/90 group-hover:border-zinc-700/80 shrink-0">
+            <span className="font-sans font-bold tracking-tight text-[11px] sm:text-[12px] text-white flex items-center gap-0.5" style={{ fontFamily: "ui-sans-serif, system-ui, sans-serif" }}>
+              Ship
+              <span className="inline-flex items-center justify-center bg-[#d26e46] text-[9px] font-medium text-white px-1 rounded-[5px] h-[14px] min-w-[18px] leading-none ml-0.5">
+                OS
+              </span>
+            </span>
+          </div>
+
+          <span className="text-[11px] sm:text-xs text-zinc-400 font-normal text-center sm:text-left">
+            Automate social posting: schedule content, generate with AI, and bulk-import posts effortlessly.
+          </span>
+
+          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#d26e46] group-hover:text-[#e4835a] transition-colors ml-1 uppercase tracking-wider shrink-0 bg-[#d26e46]/10 px-2 py-0.5 rounded border border-[#d26e46]/20 group-hover:border-[#d26e46]/40">
+            Automate Now
+            <ArrowUpRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+          </span>
+        </a>
+      </div>
+
       {/* Dynamic Header */}
       <header className="flex h-16 items-center justify-between border-b border-zinc-900 bg-[#121214]/60 px-6 backdrop-blur-xl shrink-0">
         <div className="flex items-center gap-3">
@@ -166,7 +199,9 @@ export default function App() {
               <h1 className="text-sm font-black tracking-tight text-white font-display md:text-base">
                 BigShort <span className="text-[#E2906E]">Studio</span>
               </h1>
-              <span className="rounded-md bg-zinc-800 px-1.5 py-0.5 text-[8px] font-bold text-zinc-400 uppercase tracking-widest">v1.1</span>
+              {!originalImg && (
+                <span className="rounded-md bg-zinc-800 px-1.5 py-0.5 text-[8px] font-bold text-zinc-400 uppercase tracking-widest">v1.1</span>
+              )}
             </div>
             <p className="hidden text-[10px] text-zinc-400 font-medium md:block">
               Photorealistic subject segmentation, dynamic lighting, and soft shadows
@@ -176,15 +211,17 @@ export default function App() {
 
         <div className="flex items-center gap-2">
           {/* Save to Home Screen Button */}
-          <button
-            onClick={handleInstallClick}
-            className="flex items-center gap-1.5 rounded-full border border-[#D46038]/30 bg-[#D46038]/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#E2906E] transition hover:border-[#D46038]/60 hover:bg-[#D46038]/20 active:scale-95 cursor-pointer shadow-sm"
-            title="Save BigShort Studio to your device Home Screen"
-          >
-            <Smartphone className="h-3.5 w-3.5 text-[#E2906E]" />
-            <span className="hidden sm:inline">Save to Home Screen</span>
-            <span className="sm:hidden">Install</span>
-          </button>
+          {!originalImg && (
+            <button
+              onClick={handleInstallClick}
+              className="flex items-center gap-1.5 rounded-full border border-[#D46038]/30 bg-[#D46038]/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#E2906E] transition hover:border-[#D46038]/60 hover:bg-[#D46038]/20 active:scale-95 cursor-pointer shadow-sm"
+              title="Save BigShort Studio to your device Home Screen"
+            >
+              <Smartphone className="h-3.5 w-3.5 text-[#E2906E]" />
+              <span className="hidden sm:inline">Save to Home Screen</span>
+              <span className="sm:hidden">Install</span>
+            </button>
+          )}
 
           {originalImg && (
             <button

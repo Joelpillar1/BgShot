@@ -171,6 +171,56 @@ export const BACKDROPS: Backdrop[] = [
     value: 'linear-gradient(135deg, #4b5563 0%, #1f2937 100%)', // Slate textured mockup background
     spotlight: true,
     textColor: 'light'
+  },
+  // Real Studio Staging Backdrops (High-Res Curated Unsplash Ranges)
+  {
+    id: 'img-liquid-sun',
+    name: 'Liquid Sunshine',
+    category: 'images',
+    value: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=85',
+    textColor: 'light'
+  },
+  {
+    id: 'img-studio-amber',
+    name: 'Studio Amber Glow',
+    category: 'images',
+    value: 'https://images.unsplash.com/photo-1557683316-973673baf926?auto=format&fit=crop&w=1200&q=85',
+    textColor: 'light'
+  },
+  {
+    id: 'img-golden-shimmer',
+    name: 'Vibrant Warm Shimmer',
+    category: 'images',
+    value: 'https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&w=1200&q=85',
+    textColor: 'light'
+  },
+  {
+    id: 'img-organic-clay',
+    name: 'Artistic Amber Paint',
+    category: 'images',
+    value: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=1200&q=85',
+    textColor: 'dark'
+  },
+  {
+    id: 'img-terracotta-room',
+    name: 'Terracotta Cozy Studio',
+    category: 'images',
+    value: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=1200&q=85',
+    textColor: 'dark'
+  },
+  {
+    id: 'img-cozy-sunbeams',
+    name: 'Warm Japandi Corner',
+    category: 'images',
+    value: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=1200&q=85',
+    textColor: 'dark'
+  },
+  {
+    id: 'img-minimalist-arch',
+    name: 'Arch Daylight Studio',
+    category: 'images',
+    value: 'https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=1200&q=85',
+    textColor: 'dark'
   }
 ];
 

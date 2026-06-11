@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Move, RotateCw, Maximize2, AlertCircle } from 'lucide-react';
+import { Move, RotateCw, Maximize2, AlertCircle, ArrowUpRight } from 'lucide-react';
 import { Backdrop, ShadowOverlay, SubjectPlacement, SubjectEnhancement, SubjectShadow } from '../types';
 
 interface WorkspaceCanvasProps {
@@ -183,7 +183,9 @@ export default function WorkspaceCanvas({
           id="workspace-compositor-frame"
           className={`relative w-full overflow-hidden rounded-2xl bg-neutral-900 shadow-2xl transition-all duration-300 ${getAspectRatioClass()}`}
           style={{
-            background: backdrop.value.startsWith('linear') ? backdrop.value : backdrop.value,
+            background: backdrop.category === 'images' 
+              ? `url(${backdrop.value}) center/cover no-repeat` 
+              : backdrop.value,
           }}
         >
           {/* Transparent grid backg for empty states */}
@@ -272,6 +274,28 @@ export default function WorkspaceCanvas({
                 {/* No visual frame/ring active transform overlay: image stands completely alone as requested */}
               </div>
             </div>
+          )}
+
+          {/* Post with ShipOS action overlay */}
+          {originalImg && !isProcessing && (
+            <a
+              href="https://www.myshipos.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="absolute top-3 right-3 z-30 group inline-flex items-center gap-1.5 rounded-xl bg-zinc-950/85 hover:bg-zinc-900 border border-zinc-800/80 hover:border-[#d26e46]/60 px-3 py-1.5 text-xs font-semibold text-white shadow-2xl transition-all duration-300 pointer-events-auto backdrop-blur-md active:scale-95"
+            >
+              <span className="flex items-center gap-0.5 text-[10px] sm:text-[11px] font-black tracking-tight text-white" style={{ fontFamily: "ui-sans-serif, system-ui, sans-serif" }}>
+                Ship
+                <span className="inline-flex items-center justify-center bg-[#d26e46] text-[7.5px] font-bold text-white px-0.5 rounded-[3px] h-[12px] min-w-[14px] leading-none ml-0.5">
+                  OS
+                </span>
+              </span>
+              <span className="h-3 w-[1px] bg-zinc-800" />
+              <span className="text-[9.5px] font-bold uppercase tracking-wider text-zinc-300 group-hover:text-white flex items-center gap-1">
+                Post with ShipOS
+                <ArrowUpRight className="h-3 w-3 text-[#d26e46] group-hover:text-white transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+              </span>
+            </a>
           )}
 
           {/* Loading Indicator */}
