@@ -47,6 +47,30 @@ export default function ControlPanel({
   const [showPosition, setShowPosition] = useState(false);
   const [showColorAdjustments, setShowColorAdjustments] = useState(false);
 
+  // States to facilitate manual & dynamic typed custom aspect ratios
+  const [customWStr, setCustomWStr] = useState('1');
+  const [customHStr, setCustomHStr] = useState('1');
+
+  // Sync inputs with outer master aspectRatio changes (for presets and history restoration)
+  React.useEffect(() => {
+    if (aspectRatio && aspectRatio.includes(':')) {
+      const [w, h] = aspectRatio.split(':');
+      setCustomWStr(w);
+      setCustomHStr(h);
+    }
+  }, [aspectRatio]);
+
+  const handleCustomAspectChange = (wValStr: string, hValStr: string) => {
+    setCustomWStr(wValStr);
+    setCustomHStr(hValStr);
+    
+    const wNum = parseFloat(wValStr);
+    const hNum = parseFloat(hValStr);
+    if (!isNaN(wNum) && !isNaN(hNum) && wNum > 0 && hNum > 0) {
+      setAspectRatio(`${wValStr}:${hValStr}`);
+    }
+  };
+
   const handleExportPNG = () => {
     if (!originalImg || !maskCanvas) return;
     setIsExporting(true);
@@ -111,15 +135,33 @@ export default function ControlPanel({
         let exportW = exportMaxEdge;
         let exportH = exportMaxEdge;
 
-        if (aspectRatio === '4:5') {
-          exportW = Math.round(exportMaxEdge * 0.8);
-          exportH = exportMaxEdge;
-        } else if (aspectRatio === '16:9') {
-          exportW = exportMaxEdge;
-          exportH = Math.round(exportMaxEdge * 0.5625);
-        } else if (aspectRatio === '9:16') {
-          exportW = Math.round(exportMaxEdge * 0.5625);
-          exportH = exportMaxEdge;
+        if (aspectRatio && aspectRatio.includes(':')) {
+          const [wStr, hStr] = aspectRatio.split(':');
+          const w = parseFloat(wStr || '1');
+          const h = parseFloat(hStr || '1');
+          if (!isNaN(w) && !isNaN(h) && h !== 0) {
+            const aspect = w / h;
+            if (aspect > 1) {
+              // landscape: keep width max, scale height down
+              exportW = exportMaxEdge;
+              exportH = Math.round(exportMaxEdge / aspect);
+            } else {
+              // portrait or square: keep height max, scale width down
+              exportW = Math.round(exportMaxEdge * aspect);
+              exportH = exportMaxEdge;
+            }
+          }
+        } else {
+          if (aspectRatio === '4:5') {
+            exportW = Math.round(exportMaxEdge * 0.8);
+            exportH = exportMaxEdge;
+          } else if (aspectRatio === '16:9') {
+            exportW = exportMaxEdge;
+            exportH = Math.round(exportMaxEdge * 0.5625);
+          } else if (aspectRatio === '9:16') {
+            exportW = Math.round(exportMaxEdge * 0.5625);
+            exportH = exportMaxEdge;
+          }
         }
 
         const exportCanvas = document.createElement('canvas');
@@ -363,6 +405,60 @@ export default function ControlPanel({
                     {ratio}
                   </button>
                 ))}
+              </div>
+
+              {/* Custom Manual & Dynamic Ratio Input */}
+              <div className="mt-3.5 rounded-2xl border border-zinc-900 bg-zinc-950/65 p-3.5 shadow-inner">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Manual Resizing Inputs</span>
+                
+                <div className="mt-2.5 flex items-center gap-3">
+                  <div className="flex-1 flex flex-col gap-1">
+                    <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">Width</span>
+                    <input
+                      type="number"
+                      min="0.1"
+                      step="0.1"
+                      value={customWStr}
+                      onChange={(e) => handleCustomAspectChange(e.target.value, customHStr)}
+                      className="w-full text-center rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs font-bold text-white focus:border-[#D46038] focus:outline-none transition-colors"
+                      placeholder="W"
+                    />
+                  </div>
+                  <div className="text-zinc-600 font-mono text-xs font-bold pt-4">:</div>
+                  <div className="flex-1 flex flex-col gap-1">
+                    <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">Height</span>
+                    <input
+                      type="number"
+                      min="0.1"
+                      step="0.1"
+                      value={customHStr}
+                      onChange={(e) => handleCustomAspectChange(customWStr, e.target.value)}
+                      className="w-full text-center rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs font-bold text-white focus:border-[#D46038] focus:outline-none transition-colors"
+                      placeholder="H"
+                    />
+                  </div>
+                </div>
+
+                {/* Popular ratio shortcuts */}
+                <div className="mt-3 flex items-center justify-between gap-1 border-t border-zinc-900/60 pt-2.5">
+                  <span className="text-[9px] font-semibold text-zinc-500">Quick Custom:</span>
+                  <div className="flex gap-1.5">
+                    {['4:3', '3:2', '3:4', '21:9'].map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => handleCustomAspectChange(r.split(':')[0], r.split(':')[1])}
+                        className={`rounded px-1.5 py-0.5 text-[10px] font-mono border transition ${
+                          aspectRatio === r
+                            ? 'border-[#D46038] text-[#E2906E] bg-[#D46038]/10'
+                            : 'border-zinc-800/80 text-zinc-400 hover:text-white hover:border-zinc-700'
+                        }`}
+                      >
+                        {r}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
 

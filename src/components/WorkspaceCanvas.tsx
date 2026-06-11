@@ -52,10 +52,19 @@ export default function WorkspaceCanvas({
       const { width, height } = entries[0].contentRect;
       
       let R = 1;
-      if (aspectRatio === '4:5') R = 4 / 5;
-      else if (aspectRatio === '16:9') R = 16 / 9;
-      else if (aspectRatio === '9:16') R = 9 / 16;
-      else R = 1; // 1:1
+      if (aspectRatio && aspectRatio.includes(':')) {
+        const [wStr, hStr] = aspectRatio.split(':');
+        const w = parseFloat(wStr || '1');
+        const h = parseFloat(hStr || '1');
+        if (!isNaN(w) && !isNaN(h) && h !== 0) {
+          R = w / h;
+        }
+      } else {
+        if (aspectRatio === '4:5') R = 4 / 5;
+        else if (aspectRatio === '16:9') R = 16 / 9;
+        else if (aspectRatio === '9:16') R = 9 / 16;
+        else R = 1; // 1:1
+      }
 
       const paddingX = 32;
       const paddingY = 40;

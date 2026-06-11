@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Backdrop, ShadowOverlay, SubjectPlacement, SubjectEnhancement, SubjectShadow, HistoryItem } from './types';
 import { BACKDROPS, SHADOW_OVERLAYS } from './data/backdrops';
 import ImageUploader from './components/ImageUploader';
 import WorkspaceCanvas from './components/WorkspaceCanvas';
 import ControlPanel from './components/ControlPanel';
 import { initMaskFromTransparentImage } from './utils/mask-utils';
-import { Sparkles, Sliders, Layers, RefreshCw, Smartphone, Monitor, ChevronRight, X, Share2, Plus, ArrowUpRight, History, Trash2, AlertTriangle, Download } from 'lucide-react';
+import { Sparkles, Sliders, Layers, RefreshCw, Smartphone, Monitor, ChevronRight, X, Share2, Plus, ArrowUpRight, History, Trash2, AlertTriangle, Download, UploadCloud, Image as ImageIcon } from 'lucide-react';
 import { saveHistoryItem, deleteHistoryItem, clearAllHistory, getAllHistoryItems } from './utils/historyDb';
 
 const INITIAL_PLACEMENT: SubjectPlacement = {
@@ -56,6 +56,7 @@ const SHIPOS_SLIDES = [
 export default function App() {
   const [originalImg, setOriginalImg] = useState<HTMLImageElement | null>(null);
   const [maskCanvas, setMaskCanvas] = useState<HTMLCanvasElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // ShipOS Promo Slider State
   const [currentPromoSlide, setCurrentPromoSlide] = useState<number>(0);
@@ -359,6 +360,7 @@ export default function App() {
   // Operational states
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isDraggingOver, setIsDraggingOver] = useState<boolean>(false);
 
   const handleImageUploaded = (file: File) => {
     // Reset layout on fresh image
@@ -514,30 +516,11 @@ export default function App() {
                 <span className="rounded-md bg-zinc-800 px-1.5 py-0.5 text-[8px] font-bold text-zinc-400 uppercase tracking-widest">v1.1</span>
               )}
             </div>
-            <p className="hidden text-[10px] text-zinc-400 font-medium md:block">
-              Photorealistic subject segmentation, dynamic lighting, and soft shadows
-            </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          {/* View History Button */}
-          <button
-            onClick={() => {
-              setIsHistoryOpen(true);
-              setShowClearConfirm(false);
-            }}
-            className="flex items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900/40 px-3.5 py-1.5 text-xs font-semibold text-zinc-350 transition hover:border-[#D46038]/50 hover:bg-[#D46038]/10 hover:text-white active:scale-95 relative cursor-pointer"
-            title="View your saved creation history"
-          >
-            <History className="h-3.5 w-3.5 text-[#E2906E]" />
-            <span>History</span>
-            {historyItems.length > 0 && (
-              <span className="inline-flex items-center justify-center bg-[#D46038] text-[9px] font-bold text-white px-1.5 py-0.2 rounded-full min-w-[16px] h-4 leading-none shadow-sm shadow-[#D46038]/20">
-                {historyItems.length}
-              </span>
-            )}
-          </button>
+
 
           {/* Save to Home Screen Button */}
           {!originalImg && (
@@ -553,12 +536,23 @@ export default function App() {
           )}
 
           {originalImg && (
-            <button
-              onClick={handleClearImage}
-              className="rounded-full border border-zinc-800 bg-zinc-900/40 px-3.5 py-1.5 text-xs font-semibold text-zinc-400 transition hover:border-zinc-700 hover:text-white active:scale-95"
-            >
-              Clear Scene
-            </button>
+            <>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-1.5 rounded-full border border-[#D46038]/30 bg-[#D46038]/10 px-3.5 py-1.5 text-xs font-semibold text-[#E2906E] transition hover:border-[#D46038]/60 hover:bg-[#D46038]/20 hover:text-white active:scale-95 cursor-pointer"
+                title="Upload another subject image directly inside the active layout"
+              >
+                <UploadCloud className="h-3.5 w-3.5 text-[#E2906E]" />
+                <span className="hidden sm:inline">Upload New Image</span>
+                <span className="sm:hidden">Upload New</span>
+              </button>
+              <button
+                onClick={handleClearImage}
+                className="rounded-full border border-zinc-800 bg-zinc-900/40 px-3.5 py-1.5 text-xs font-semibold text-zinc-400 transition hover:border-zinc-700 hover:text-white active:scale-95 cursor-pointer"
+              >
+                Clear/Reset
+              </button>
+            </>
           )}
         </div>
       </header>
@@ -590,7 +584,58 @@ export default function App() {
               </div>
             </div>
           ) : (
-            <div className="relative flex flex-1 flex-col justify-center lg:h-full lg:overflow-hidden">
+            <div 
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsDraggingOver(true);
+              }}
+              onDragLeave={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsDraggingOver(false);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsDraggingOver(false);
+                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                  const file = e.dataTransfer.files[0];
+                  if (file.type.startsWith('image/')) {
+                    handleImageUploaded(file);
+                  } else {
+                    setErrorMessage('Please upload a valid image file (PNG, JPG, WebP)');
+                  }
+                }
+              }}
+              className="relative flex flex-1 flex-col justify-center lg:h-full lg:overflow-hidden"
+            >
+              {/* Floating Action Button inside active workspace */}
+              <div className="absolute top-4 left-4 z-30 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900/80 px-4 py-2 text-xs font-semibold text-white backdrop-blur-md shadow-xl transition-all duration-300 hover:border-[#D46038]/50 hover:bg-[#D46038]/30 active:scale-95 cursor-pointer hover:shadow-2xl"
+                  title="Upload a new item or different subject image directly in place"
+                >
+                  <Plus className="h-4 w-4 text-[#E2906E]" />
+                  <span>Upload Another Image</span>
+                </button>
+              </div>
+
+              {/* Drag over overlay visual */}
+              {isDraggingOver && (
+                <div className="absolute inset-0 z-40 flex items-center justify-center bg-[#0d0d0f]/85 backdrop-blur-sm p-6 pointer-events-none transition-all duration-300">
+                  <div className="flex flex-col items-center justify-center border-2 border-dashed border-[#D46038] rounded-3xl p-8 max-w-sm text-center bg-zinc-950/95 shadow-2xl">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#D46038]/10 text-[#E2906E] mb-4">
+                      <UploadCloud className="h-7 w-7 animate-bounce" />
+                    </div>
+                    <h3 className="text-xs font-bold text-white tracking-widest uppercase">Drop Image Here</h3>
+                    <p className="text-[11px] text-zinc-400 mt-1">Release to instantly swap and edit this subject in the studio!</p>
+                  </div>
+                </div>
+              )}
+
               {/* Skip warnings toast if error occurred */}
               {errorMessage && (
                 <div className="absolute top-4 left-4 right-4 z-10 flex items-center justify-between rounded-xl bg-amber-950/40 border border-amber-500/10 p-3 text-xs text-amber-500 backdrop-blur-md">
@@ -993,6 +1038,18 @@ export default function App() {
           </div>
         </div>
       )}
+      {/* Standalone hidden native file input hook */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        accept="image/*"
+        onChange={(e) => {
+          if (e.target.files && e.target.files[0]) {
+            handleImageUploaded(e.target.files[0]);
+          }
+        }}
+      />
     </div>
   );
 }
