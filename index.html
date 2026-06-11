@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>BigShort Studio — High-Res Backdrop Changer</title>
+    
+    <!-- Meta tags for PWA and mobile friendly installs -->
+    <meta name="description" content="High-resolution backdrop customization and studio shadows" />
+    <meta name="theme-color" content="#D46038" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="BigShort" />
+    
+    <!-- Icons and Manifest -->
+    <link rel="icon" type="image/svg+xml" href="/logo-icon.svg" />
+    <link rel="apple-touch-icon" href="/logo-icon.svg" />
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Register service worker -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('BigShort SW successfully running on port 3000:', reg.scope))
+            .catch(err => console.log('BigShort SW registration failed:', err));
+        });
+      }
+    </script>
+  </head>
+  <body class="bg-black text-white antialiased selection:bg-[#D46038]/30 overflow-x-hidden">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

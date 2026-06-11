@@ -1,0 +1,6 @@
+{
+  "name": "BgShot",
+  "description": "Upload any image to automatically extract the subject, apply clean minimalist studio backdrops, cast photorealistic ambient leaf or louver shadows, adjust lighting, and export high-resolution PNGs.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

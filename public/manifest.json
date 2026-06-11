@@ -1,0 +1,19 @@
+{
+  "name": "BigShort Studio",
+  "short_name": "BigShort",
+  "description": "High-Res Studio Backdrop Changer with photorealistic ambient lighting & custom shadow overlays.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#121214",
+  "theme_color": "#D46038",
+  "orientation": "any",
+  "categories": ["photography", "utilities"],
+  "icons": [
+    {
+      "src": "/logo-icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
