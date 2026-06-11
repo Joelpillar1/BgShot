@@ -31,6 +31,7 @@ export default function WorkspaceCanvas({
   isProcessing,
   maskTrigger,
 }: WorkspaceCanvasProps) {
+  const parentRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const subjectCanvasRef = useRef<HTMLCanvasElement>(null);
   
@@ -39,6 +40,64 @@ export default function WorkspaceCanvas({
   const [isScaling, setIsScaling] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [placementStart, setPlacementStart] = useState<SubjectPlacement>({ ...placement });
+  const [dimensions, setDimensions] = useState<{ width: number; height: number }>({ width: 400, height: 400 });
+
+  // Calculate maximum fitting dimensions based on parent container size
+  useEffect(() => {
+    const parent = parentRef.current;
+    if (!parent) return;
+
+    const handleResize = (entries: ResizeObserverEntry[]) => {
+      if (!entries || entries.length === 0) return;
+      const { width, height } = entries[0].contentRect;
+      
+      let R = 1;
+      if (aspectRatio === '4:5') R = 4 / 5;
+      else if (aspectRatio === '16:9') R = 16 / 9;
+      else if (aspectRatio === '9:16') R = 9 / 16;
+      else R = 1; // 1:1
+
+      const paddingX = 32;
+      const paddingY = 40;
+      const feedbackTextBuffer = originalImg ? 36 : 0;
+      
+      const wAvail = Math.max(width - paddingX, 150);
+      const hAvail = Math.max(height - paddingY - feedbackTextBuffer, 150);
+
+      // Enforce elegant desktop sizing limit
+      const wMaxLimit = 540;
+      
+      const wTargetMax = Math.min(wAvail, wMaxLimit);
+      const hTargetMax = hAvail;
+
+      // Draft a width-constrained design
+      let finalW = wTargetMax;
+      let finalH = finalW / R;
+
+      // Fit inside height limit if too tall
+      if (finalH > hTargetMax) {
+        finalH = hTargetMax;
+        finalW = finalH * R;
+      }
+
+      setDimensions({ 
+        width: Math.floor(finalW), 
+        height: Math.floor(finalH) 
+      });
+    };
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      window.requestAnimationFrame(() => {
+        handleResize(entries);
+      });
+    });
+
+    resizeObserver.observe(parent);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [aspectRatio, originalImg]);
 
   // Update subject canvas when original image or mask updates
   useEffect(() => {
@@ -175,13 +234,16 @@ export default function WorkspaceCanvas({
   };
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center p-3 sm:p-4 lg:p-8">
+    <div ref={parentRef} className="flex flex-1 flex-col items-center justify-center p-3 sm:p-4 lg:p-6 w-full h-full min-h-0 overflow-hidden relative">
       {/* Aspect Wrapper Box */}
-      <div className="w-full max-w-lg md:max-w-xl">
+      <div 
+        style={{ width: `${dimensions.width}px`, height: `${dimensions.height}px` }} 
+        className="relative shrink-0 flex flex-col justify-center"
+      >
         <div
           ref={containerRef}
           id="workspace-compositor-frame"
-          className={`relative w-full overflow-hidden rounded-2xl bg-neutral-900 shadow-2xl transition-all duration-300 ${getAspectRatioClass()}`}
+          className="relative h-full w-full overflow-hidden rounded-2xl bg-neutral-900 shadow-2xl transition-all duration-300"
           style={{
             background: backdrop.category === 'images' 
               ? `url(${backdrop.value}) center/cover no-repeat` 

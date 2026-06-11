@@ -20,6 +20,7 @@ interface ControlPanelProps {
   onResetLayout: () => void;
   originalImg: HTMLImageElement | null;
   maskCanvas: HTMLCanvasElement | null;
+  onExportSuccess?: (dataUrl: string) => void;
 }
 
 export default function ControlPanel({
@@ -38,6 +39,7 @@ export default function ControlPanel({
   onResetLayout,
   originalImg,
   maskCanvas,
+  onExportSuccess,
 }: ControlPanelProps) {
   const [activeTab, setActiveTab] = useState<'backdrop' | 'filters' | 'shadow'>('backdrop');
   const [isExporting, setIsExporting] = useState(false);
@@ -287,6 +289,10 @@ export default function ControlPanel({
         // Download PNG safely
         const dataUrl = exportCanvas.toDataURL('image/png');
         setExportedImageUrl(dataUrl);
+
+        if (onExportSuccess) {
+          onExportSuccess(dataUrl);
+        }
 
         const link = document.createElement('a');
         link.download = `studiopro_composition_${Date.now()}.png`;

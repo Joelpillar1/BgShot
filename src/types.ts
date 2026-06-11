@@ -46,3 +46,21 @@ export interface CanvasDimensions {
   width: number;
   height: number;
 }
+
+export interface HistoryItem {
+  id: string;
+  dataUrl: string;
+  timestamp: string;
+  backdropName: string;
+  aspectRatio: string;
+  state?: {
+    selectedBackdropId: string;
+    selectedShadowId: string;
+    placement: SubjectPlacement;
+    enhancement: SubjectEnhancement;
+    shadowSettings: SubjectShadow;
+    aspectRatio: string;
+    originalImgDataUrl: string;
+    maskCanvasDataUrl?: string;
+  };
+}

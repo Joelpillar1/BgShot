@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Backdrop, ShadowOverlay, SubjectPlacement, SubjectEnhancement, SubjectShadow } from './types';
+import { Backdrop, ShadowOverlay, SubjectPlacement, SubjectEnhancement, SubjectShadow, HistoryItem } from './types';
 import { BACKDROPS, SHADOW_OVERLAYS } from './data/backdrops';
 import ImageUploader from './components/ImageUploader';
 import WorkspaceCanvas from './components/WorkspaceCanvas';
 import ControlPanel from './components/ControlPanel';
 import { initMaskFromTransparentImage } from './utils/mask-utils';
-import { Sparkles, Sliders, Layers, RefreshCw, Smartphone, Monitor, ChevronRight, X, Share2, Plus, ArrowUpRight } from 'lucide-react';
+import { Sparkles, Sliders, Layers, RefreshCw, Smartphone, Monitor, ChevronRight, X, Share2, Plus, ArrowUpRight, History, Trash2, AlertTriangle, Download } from 'lucide-react';
+import { saveHistoryItem, deleteHistoryItem, clearAllHistory, getAllHistoryItems } from './utils/historyDb';
 
 const INITIAL_PLACEMENT: SubjectPlacement = {
   x: 0,
@@ -66,6 +67,256 @@ export default function App() {
     return () => clearInterval(promoTimer);
   }, []);
 
+  // History state list backed by IndexedDB storage sandbox (to avoid localStorage 5MB quota limits)
+  const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
+  const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
+  const [showClearConfirm, setShowClearConfirm] = useState<boolean>(false);
+
+  // Load history from DB on mount
+  useEffect(() => {
+    const loadHistory = async () => {
+      try {
+        const items = await getAllHistoryItems();
+        setHistoryItems(items);
+      } catch (err) {
+        console.error('Failed to load creation history from IndexedDB', err);
+      }
+    };
+    loadHistory();
+  }, []);
+
+  // This state is just a trigger to force compositing components to re-render
+  // when drawing on the canvas occurs in the child modal.
+  const [maskTrigger, setMaskTrigger] = useState<number>(0);
+
+  // Studio Staging State
+  const [selectedBackdrop, setSelectedBackdrop] = useState<Backdrop>(BACKDROPS.find(b => b.id === 'grad-burnt-clay') || BACKDROPS[0]);
+  const [selectedShadow, setSelectedShadow] = useState<ShadowOverlay>(SHADOW_OVERLAYS[0]);
+  const [placement, setPlacement] = useState<SubjectPlacement>(INITIAL_PLACEMENT);
+  const [enhancement, setEnhancement] = useState<SubjectEnhancement>(INITIAL_ENHANCEMENT);
+  const [shadowSettings, setShadowSettings] = useState<SubjectShadow>(INITIAL_SHADOW_SETTINGS);
+  const [aspectRatio, setAspectRatio] = useState<string>('1:1');
+
+  const handleExportSuccess = (dataUrl: string) => {
+    let originalImgDataUrl = '';
+    if (originalImg) {
+      try {
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = originalImg.naturalWidth;
+        tempCanvas.height = originalImg.naturalHeight;
+        const tempCtx = tempCanvas.getContext('2d');
+        if (tempCtx) {
+          tempCtx.drawImage(originalImg, 0, 0);
+          originalImgDataUrl = tempCanvas.toDataURL('image/jpeg', 0.85);
+        }
+      } catch (err) {
+        console.error('Failed to extract original image data url', err);
+        originalImgDataUrl = originalImg.src;
+      }
+    }
+
+    let maskCanvasDataUrl = '';
+    if (maskCanvas) {
+      try {
+        maskCanvasDataUrl = maskCanvas.toDataURL('image/png');
+      } catch (err) {
+        console.error('Failed to extract mask canvas data url', err);
+      }
+    }
+
+    const newItem: HistoryItem = {
+      id: `hist_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+      dataUrl,
+      timestamp: new Date().toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
+      backdropName: selectedBackdrop.name,
+      aspectRatio: aspectRatio,
+      state: {
+        selectedBackdropId: selectedBackdrop.id,
+        selectedShadowId: selectedShadow.id,
+        placement: { ...placement },
+        enhancement: { ...enhancement },
+        shadowSettings: { ...shadowSettings },
+        aspectRatio: aspectRatio,
+        originalImgDataUrl,
+        maskCanvasDataUrl,
+      }
+    };
+    
+    // Optimistic UI update
+    setHistoryItems((prev) => [newItem, ...prev]);
+
+    // Save to database asynchronously
+    saveHistoryItem(newItem).catch((err) => {
+      console.error('Failed to write history composition to IndexedDB storage', err);
+    });
+  };
+
+  const handleDeleteHistoryItem = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Optimistic UI update
+    setHistoryItems((prev) => prev.filter(item => item.id !== id));
+
+    // Delete from database asynchronously
+    deleteHistoryItem(id).catch((err) => {
+      console.error('Failed to delete history composition from IndexedDB', err);
+    });
+  };
+
+  const handleClearAllHistory = () => {
+    // Optimistic UI update
+    setHistoryItems([]);
+    setShowClearConfirm(false);
+
+    // Clear from database asynchronously
+    clearAllHistory().catch((err) => {
+      console.error('Failed to wipe composition data from IndexedDB', err);
+    });
+  };
+
+  const handleRestoreHistoryState = (item: HistoryItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsProcessing(true);
+    setErrorMessage(null);
+
+    // Close the history modal
+    setIsHistoryOpen(false);
+
+    if (item.state) {
+      // Restore full compositional state
+      const { 
+        selectedBackdropId, 
+        selectedShadowId, 
+        placement: savedPlacement, 
+        enhancement: savedEnhancement, 
+        shadowSettings: savedShadowSettings, 
+        aspectRatio: savedAspectRatio, 
+        originalImgDataUrl, 
+        maskCanvasDataUrl 
+      } = item.state;
+
+      // 1. Rebuild and mount HTMLImageElement
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        setOriginalImg(img);
+        
+        // 2. Map and set states
+        setPlacement(savedPlacement);
+        setEnhancement(savedEnhancement);
+        setShadowSettings(savedShadowSettings);
+        setAspectRatio(savedAspectRatio);
+
+        // Map backdrops
+        const backdropMatch = BACKDROPS.find(b => b.id === selectedBackdropId);
+        if (backdropMatch) {
+          setSelectedBackdrop(backdropMatch);
+        }
+
+        // Map shadows
+        const shadowMatch = SHADOW_OVERLAYS.find(s => s.id === selectedShadowId);
+        if (shadowMatch) {
+          setSelectedShadow(shadowMatch);
+        }
+
+        // 3. Rebuild and mount Mask Canvas
+        if (maskCanvasDataUrl) {
+          const mImg = new Image();
+          mImg.crossOrigin = 'anonymous';
+          mImg.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(mImg, 0, 0, canvas.width, canvas.height);
+            }
+            setMaskCanvas(canvas);
+            setMaskTrigger((prev) => prev + 1);
+            setIsProcessing(false);
+          };
+          mImg.onerror = () => {
+            console.error('Failed to load mask image from history state, resetting mask to full image');
+            // If mask image loading fail, fallback to clear/full mask initialization
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.fillStyle = '#FFFFFF';
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+            setMaskCanvas(canvas);
+            setMaskTrigger((prev) => prev + 1);
+            setIsProcessing(false);
+          };
+          mImg.src = maskCanvasDataUrl;
+        } else {
+          // No mask, initialize to solid white
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth;
+          canvas.height = img.naturalHeight;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+          }
+          setMaskCanvas(canvas);
+          setMaskTrigger((prev) => prev + 1);
+          setIsProcessing(false);
+        }
+      };
+
+      img.onerror = (err) => {
+        console.error('Failed to restore main image from history state', err);
+        setErrorMessage('Failed to reload original source image for editing');
+        setIsProcessing(false);
+      };
+
+      img.src = originalImgDataUrl;
+
+    } else {
+      // Fallback: load final composite data Url as a generic flat image
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        setOriginalImg(img);
+        setPlacement({
+          ...INITIAL_PLACEMENT,
+          aspectRatio: img.naturalWidth / img.naturalHeight,
+        });
+        setEnhancement(INITIAL_ENHANCEMENT);
+        setShadowSettings(INITIAL_SHADOW_SETTINGS);
+        setAspectRatio('1:1');
+
+        // Reset layer mask to full canvas
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        setMaskCanvas(canvas);
+        setMaskTrigger((prev) => prev + 1);
+        setIsProcessing(false);
+      };
+
+      img.onerror = () => {
+        setErrorMessage('Failed to parse and load this design image back into studio');
+        setIsProcessing(false);
+      };
+
+      img.src = item.dataUrl;
+    }
+  };
+
   // PWA Support States
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallModalOpen, setIsInstallModalOpen] = useState<boolean>(false);
@@ -105,18 +356,6 @@ export default function App() {
     }
   };
   
-  // This state is just a trigger to force compositing components to re-render
-  // when drawing on the canvas occurs in the child modal.
-  const [maskTrigger, setMaskTrigger] = useState<number>(0);
-
-  // Studio Staging State
-  const [selectedBackdrop, setSelectedBackdrop] = useState<Backdrop>(BACKDROPS.find(b => b.id === 'grad-burnt-clay') || BACKDROPS[0]);
-  const [selectedShadow, setSelectedShadow] = useState<ShadowOverlay>(SHADOW_OVERLAYS[0]);
-  const [placement, setPlacement] = useState<SubjectPlacement>(INITIAL_PLACEMENT);
-  const [enhancement, setEnhancement] = useState<SubjectEnhancement>(INITIAL_ENHANCEMENT);
-  const [shadowSettings, setShadowSettings] = useState<SubjectShadow>(INITIAL_SHADOW_SETTINGS);
-  const [aspectRatio, setAspectRatio] = useState<string>('1:1');
-
   // Operational states
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -176,9 +415,9 @@ export default function App() {
   };
 
   return (
-    <div id="app-root-container" className="flex min-h-screen flex-col bg-[#0d0d0f] font-sans antialiased text-white select-none">
+    <div id="app-root-container" className="flex min-h-screen lg:h-screen lg:overflow-hidden flex-col bg-[#0d0d0f] font-sans antialiased text-white select-none">
       {/* ShipOS Ads Promo Banner Slider */}
-      <div id="shipos-promo-banner" className="relative bg-[#C4622D] border-b border-[#ab4f20] overflow-hidden z-50 h-10 sm:h-12 flex items-center select-none shadow-sm">
+      <div id="shipos-promo-banner" className="sticky top-0 z-[60] bg-[#C4622D] border-b border-[#ab4f20] overflow-hidden h-10 sm:h-12 flex items-center select-none shadow-sm w-full">
         <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 flex items-center justify-between gap-4 h-full">
           {/* Logo brand box */}
           <div className="flex items-center gap-2 shrink-0">
@@ -255,7 +494,7 @@ export default function App() {
       </div>
 
       {/* Dynamic Header */}
-      <header className="flex h-16 items-center justify-between border-b border-zinc-900 bg-[#121214]/60 px-6 backdrop-blur-xl shrink-0">
+      <header className="sticky top-10 sm:top-12 z-[50] flex h-16 items-center justify-between border-b border-zinc-900 bg-[#121214]/90 px-6 backdrop-blur-xl shrink-0">
         <div className="flex items-center gap-3">
           {/* Custom bigshort vector logo */}
           <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-[#E2906E] to-[#D46038] shadow-lg border border-zinc-700/30">
@@ -282,11 +521,29 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* View History Button */}
+          <button
+            onClick={() => {
+              setIsHistoryOpen(true);
+              setShowClearConfirm(false);
+            }}
+            className="flex items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900/40 px-3.5 py-1.5 text-xs font-semibold text-zinc-350 transition hover:border-[#D46038]/50 hover:bg-[#D46038]/10 hover:text-white active:scale-95 relative cursor-pointer"
+            title="View your saved creation history"
+          >
+            <History className="h-3.5 w-3.5 text-[#E2906E]" />
+            <span>History</span>
+            {historyItems.length > 0 && (
+              <span className="inline-flex items-center justify-center bg-[#D46038] text-[9px] font-bold text-white px-1.5 py-0.2 rounded-full min-w-[16px] h-4 leading-none shadow-sm shadow-[#D46038]/20">
+                {historyItems.length}
+              </span>
+            )}
+          </button>
+
           {/* Save to Home Screen Button */}
           {!originalImg && (
             <button
               onClick={handleInstallClick}
-              className="flex items-center gap-1.5 rounded-full border border-[#D46038]/30 bg-[#D46038]/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#E2906E] transition hover:border-[#D46038]/60 hover:bg-[#D46038]/20 active:scale-95 cursor-pointer shadow-sm"
+              className="flex items-center gap-1.5 rounded-full border border-[#D46038]/20 bg-[#D46038]/5 px-3.5 py-1.5 text-xs font-semibold text-[#E2906E] transition hover:border-[#D46038]/60 hover:bg-[#D46038]/15 active:scale-95 cursor-pointer shadow-sm"
               title="Save BigShort Studio to your device Home Screen"
             >
               <Smartphone className="h-3.5 w-3.5 text-[#E2906E]" />
@@ -309,7 +566,7 @@ export default function App() {
       {/* Main Body */}
       <div className="flex flex-1 flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
         {/* Left Side: Upload Zone / Live Canvas Compositor Preview */}
-        <main className="sticky top-0 lg:static z-20 flex flex-col justify-between bg-zinc-950 lg:bg-zinc-950/30 border-b border-zinc-900 lg:border-b-0 shrink-0 lg:shrink lg:flex-1">
+        <main className="sticky top-[104px] sm:top-[112px] lg:static z-20 flex flex-col justify-between bg-zinc-950 lg:bg-zinc-950/30 border-b border-zinc-900 lg:border-b-0 shrink-0 lg:shrink lg:flex-1 lg:h-full lg:overflow-hidden">
           {!originalImg ? (
             <div className="flex flex-1 items-center justify-center p-6 md:p-12">
               <div className="w-full max-w-sm rounded-[28px] border border-zinc-900 bg-[#121214] p-8 shadow-2xl relative overflow-hidden">
@@ -333,7 +590,7 @@ export default function App() {
               </div>
             </div>
           ) : (
-            <div className="relative flex flex-1 flex-col justify-center">
+            <div className="relative flex flex-1 flex-col justify-center lg:h-full lg:overflow-hidden">
               {/* Skip warnings toast if error occurred */}
               {errorMessage && (
                 <div className="absolute top-4 left-4 right-4 z-10 flex items-center justify-between rounded-xl bg-amber-950/40 border border-amber-500/10 p-3 text-xs text-amber-500 backdrop-blur-md">
@@ -367,7 +624,7 @@ export default function App() {
 
         {/* Right Side: Studio adjustments controls */}
         {originalImg && (
-          <aside className="w-full lg:w-96 select-none border-t border-zinc-900 lg:border-t-0 shadow-2xl bg-[#121214] lg:h-[calc(100vh-64px)] shrink-0">
+          <aside className="w-full lg:w-96 select-none border-t border-zinc-900 lg:border-t-0 shadow-2xl bg-[#121214] lg:h-full shrink-0 lg:overflow-hidden">
             <ControlPanel
               selectedBackdrop={selectedBackdrop}
               onSelectBackdrop={setSelectedBackdrop}
@@ -384,6 +641,7 @@ export default function App() {
               onResetLayout={handleResetLayout}
               originalImg={originalImg}
               maskCanvas={maskCanvas}
+              onExportSuccess={handleExportSuccess}
             />
           </aside>
         )}
@@ -574,6 +832,163 @@ export default function App() {
                   Prompt Install
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Creation History Modal Sandbox */}
+      {isHistoryOpen && (
+        <div id="history-lightbox" className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-md animate-fade-in">
+          <div className="relative w-full max-w-2xl rounded-3xl border border-zinc-800 bg-[#121214] p-6 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            {/* Background ambient lighting */}
+            <div className="absolute -top-12 -right-12 h-32 w-32 bg-[#D46038]/10 rounded-full blur-2xl pointer-events-none" />
+            
+            {/* Header */}
+            <div className="flex items-start justify-between pb-4 border-b border-zinc-850 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#E2906E] to-[#D46038] text-white">
+                  <History className="h-5.5 w-5.5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-white tracking-tight">Saved Creation History</h3>
+                  <p className="text-[10px] text-zinc-400">Review, re-download, or manage your locally preserved composite designs</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsHistoryOpen(false)}
+                className="rounded-full bg-zinc-900 p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-white transition cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Scrollable Main Content wrapper */}
+            <div className="flex-1 overflow-y-auto my-4 space-y-4 pr-1">
+              {/* Disclaimer - Warm terracotta / amber alert box warning readers about local retention safety */}
+              <div className="rounded-2xl border border-amber-500/10 bg-amber-500/5 p-4 text-xs">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <h4 className="font-bold text-amber-500 tracking-tight text-[12px] sm:text-[12.5px]">Local Sandbox Storage Disclaimer</h4>
+                    <p className="text-zinc-400 leading-relaxed font-normal text-[11px] sm:text-[11.5px]">
+                      To prioritize privacy, all compositions are cached completely inside your private browser sandbox database database (<code className="bg-zinc-900 px-1 py-0.5 rounded text-[10px] text-zinc-350">IndexedDB</code>). Clearing browser cache, scrubbing website data, or starting private browser tabs <strong>will instantly delete your saved history</strong>. Let this serve as a warning that we do not store backups of your files or assets on our servers.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* History list container */}
+              {historyItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-zinc-900/80 border border-zinc-800 text-zinc-500 mb-4 animate-pulse">
+                    <History className="h-6 w-6" />
+                  </div>
+                  <h4 className="text-sm font-bold text-white tracking-tight">Your History is Empty</h4>
+                  <p className="mt-1 text-xs text-zinc-400 max-w-xs leading-relaxed">
+                    Upload a portrait or merchandise asset, design a tailored aesthetic backdrop, and export a PNG. High-resolution composites will populate right here.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {historyItems.map((item) => (
+                    <div 
+                      key={item.id} 
+                      className="group relative flex flex-col rounded-2xl border border-zinc-850 bg-zinc-900/40 p-3 hover:border-zinc-750 transition-all duration-300"
+                    >
+                      {/* Interactive Visual Preview Box */}
+                      <div className="relative aspect-video w-full rounded-xl bg-zinc-950 border border-zinc-850/60 overflow-hidden group/thumb flex items-center justify-center shadow-inner">
+                        <img
+                          src={item.dataUrl}
+                          alt={`Design from ${item.timestamp}`}
+                          className="h-full w-full object-contain transition-transform duration-500 group-hover/thumb:scale-105"
+                          referrerPolicy="no-referrer"
+                        />
+                        {/* Hover Overlay triggers high-resolution manual download or design load */}
+                        <div className="absolute inset-0 bg-black/85 opacity-0 group-hover/thumb:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center gap-2 px-4 text-center">
+                          <button
+                            onClick={(e) => handleRestoreHistoryState(item, e)}
+                            className="w-full max-w-[140px] inline-flex items-center justify-center gap-1.5 bg-[#D46038] hover:bg-[#E2906E] text-[11px] font-bold text-white px-3.5 py-2 rounded-xl shadow-lg transition active:scale-95 cursor-pointer"
+                          >
+                            <Sliders className="h-3.5 w-3.5" />
+                            Edit Design
+                          </button>
+                          <a
+                            href={item.dataUrl}
+                            download={`bigshort_composition_${Date.now()}.png`}
+                            className="w-full max-w-[140px] inline-flex items-center justify-center gap-1.5 bg-white hover:bg-zinc-100 text-[11px] font-bold text-zinc-950 px-3.5 py-2 rounded-xl shadow-lg transition active:scale-95 cursor-pointer"
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                            Download
+                          </a>
+                        </div>
+                      </div>
+
+                      {/* Info & Delete Section */}
+                      <div className="mt-2.5 flex items-start justify-between gap-2.5">
+                        <div className="min-w-0 flex-1">
+                          <span className="text-[10px] uppercase tracking-wider font-extrabold text-[#E2906E] bg-[#D46038]/10 px-1.5 py-0.5 rounded border border-[#D46038]/20 inline-block mb-1">
+                            {item.backdropName}
+                          </span>
+                          <div className="text-[11.5px] font-bold text-white tracking-tight truncate">
+                            Ratio: {item.aspectRatio}
+                          </div>
+                          <div className="text-[10px] text-zinc-500 font-mono mt-0.5">
+                            {item.timestamp}
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={(e) => handleDeleteHistoryItem(item.id, e)}
+                          className="rounded-xl p-2 text-zinc-500 hover:bg-red-500/10 hover:text-red-400 active:scale-95 transition-all cursor-pointer inline-flex items-center"
+                          title="Permanently remove creation"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Sticky/Footer summary wrapper controls */}
+            <div className="pt-4 border-t border-zinc-850 flex items-center justify-between gap-4 shrink-0">
+              {historyItems.length > 0 && (
+                <div className="flex items-center">
+                  {!showClearConfirm ? (
+                    <button
+                      onClick={() => setShowClearConfirm(true)}
+                      className="rounded-xl bg-red-950/20 hover:bg-red-950/45 text-red-405 py-2 px-3 text-xs font-semibold transition cursor-pointer"
+                    >
+                      Delete All History
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-2 bg-red-950/15 border border-red-500/10 p-1 px-2.5 rounded-xl">
+                      <span className="text-[10px] font-semibold text-red-400">Clear {historyItems.length} items?</span>
+                      <button
+                        onClick={handleClearAllHistory}
+                        className="rounded bg-red-500 hover:bg-red-650 text-white font-bold py-1 px-2.5 text-[9.5px] transition cursor-pointer"
+                      >
+                        Yes, Wipe
+                      </button>
+                      <button
+                        onClick={() => setShowClearConfirm(false)}
+                        className="rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 py-1 px-2 text-[9.5px] transition cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <button
+                onClick={() => setIsHistoryOpen(false)}
+                className="rounded-xl bg-zinc-900 border border-zinc-800 w-full sm:w-28 py-2.5 text-center text-xs font-semibold text-zinc-400 hover:text-white hover:bg-zinc-800 transition cursor-pointer ml-auto"
+              >
+                Close History
+              </button>
             </div>
           </div>
         </div>
