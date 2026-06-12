@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Backdrop, ShadowOverlay, SubjectPlacement, SubjectEnhancement, SubjectShadow } from '../types';
+import { Backdrop, ShadowOverlay, SubjectPlacement, SubjectEnhancement, SubjectShadow, BlurArea } from '../types';
 import { SHADOW_OVERLAYS } from '../data/backdrops';
-import { Sliders, Sun, Palette, Sparkles, Download, Layers, FlipHorizontal, Eye, RefreshCw, X, ChevronDown, ChevronUp, Rocket, ExternalLink } from 'lucide-react';
+import { Sliders, Sun, Palette, Sparkles, Download, Layers, FlipHorizontal, Eye, RefreshCw, X, ChevronDown, ChevronUp, Rocket, ExternalLink, EyeOff, Plus, Trash2, ShieldAlert } from 'lucide-react';
 import BackdropSelector from './BackdropSelector';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -22,6 +22,10 @@ interface ControlPanelProps {
   originalImg: HTMLImageElement | null;
   maskCanvas: HTMLCanvasElement | null;
   onExportSuccess?: (dataUrl: string) => void;
+  blurAreas: BlurArea[];
+  setBlurAreas: React.Dispatch<React.SetStateAction<BlurArea[]>>;
+  activeBlurId: string | null;
+  setActiveBlurId: (id: string | null) => void;
 }
 
 const SHIPOS_PLATFORMS = [
@@ -127,8 +131,12 @@ export default function ControlPanel({
   originalImg,
   maskCanvas,
   onExportSuccess,
+  blurAreas,
+  setBlurAreas,
+  activeBlurId,
+  setActiveBlurId,
 }: ControlPanelProps) {
-  const [activeTab, setActiveTab] = useState<'backdrop' | 'filters' | 'shadow'>('backdrop');
+  const [activeTab, setActiveTab] = useState<'backdrop' | 'filters' | 'shadow' | 'blur'>('backdrop');
   const [isExporting, setIsExporting] = useState(false);
   const [exportedImageUrl, setExportedImageUrl] = useState<string | null>(null);
   const [showPosition, setShowPosition] = useState(false);
@@ -424,6 +432,36 @@ export default function ControlPanel({
         ctx.drawImage(subjectCanvas, -subjectW / 2, -subjectH / 2, subjectW, subjectH);
         ctx.restore();
 
+        // 5. Draw and bake active Blur/Redaction filter regions onto high-res canvas
+        if (blurAreas && blurAreas.length > 0) {
+          blurAreas.forEach((area) => {
+            const rx = (area.x / 100) * exportW;
+            const ry = (area.y / 100) * exportH;
+            const rw = (area.width / 100) * exportW;
+            const rh = (area.height / 100) * exportH;
+            
+            const scaleFactor = exportW / 800;
+            const blurVal = area.blur * scaleFactor;
+
+            if (rw > 0 && rh > 0) {
+              ctx.save();
+              const tempCanvas = document.createElement('canvas');
+              tempCanvas.width = rw;
+              tempCanvas.height = rh;
+              const tempCtx = tempCanvas.getContext('2d');
+              
+              if (tempCtx) {
+                tempCtx.drawImage(exportCanvas, rx, ry, rw, rh, 0, 0, rw, rh);
+                ctx.save();
+                ctx.filter = `blur(${Math.max(blurVal, 1)}px)`;
+                ctx.drawImage(tempCanvas, rx, ry, rw, rh);
+                ctx.restore();
+              }
+              ctx.restore();
+            }
+          });
+        }
+
         // Download PNG safely
         const dataUrl = exportCanvas.toDataURL('image/png');
         setExportedImageUrl(dataUrl);
@@ -455,27 +493,34 @@ export default function ControlPanel({
   return (
     <div className="flex flex-col h-auto lg:h-full bg-[#121214] border-t lg:border-t-0 lg:border-l border-zinc-900 overflow-y-visible lg:overflow-y-auto">
       {/* Tab Switcher Headers */}
-      <div className="grid grid-cols-3 border-b border-zinc-900 text-xs font-sans">
+      <div className="grid grid-cols-4 border-b border-zinc-900 text-[10px] sm:text-xs font-sans">
         <button
           onClick={() => setActiveTab('backdrop')}
-          className={`flex items-center justify-center gap-1.5 py-4 border-b-2 transition ${currentTabClass('backdrop')}`}
+          className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-3 border-b-2 transition ${currentTabClass('backdrop')}`}
         >
           <Palette className="h-3.5 w-3.5" />
-          <span>Stage Backdrop</span>
+          <span>Backdrop</span>
         </button>
         <button
           onClick={() => setActiveTab('filters')}
-          className={`flex items-center justify-center gap-1.5 py-4 border-b-2 transition ${currentTabClass('filters')}`}
+          className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-3 border-b-2 transition ${currentTabClass('filters')}`}
         >
           <Sliders className="h-3.5 w-3.5" />
           <span>Color Grade</span>
         </button>
         <button
           onClick={() => setActiveTab('shadow')}
-          className={`flex items-center justify-center gap-1.5 py-4 border-b-2 transition ${currentTabClass('shadow')}`}
+          className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-3 border-b-2 transition ${currentTabClass('shadow')}`}
         >
           <Layers className="h-3.5 w-3.5" />
-          <span>Soft Shadows</span>
+          <span>Shadows</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('blur')}
+          className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-3 border-b-2 transition ${currentTabClass('blur')}`}
+        >
+          <EyeOff className="h-3.5 w-3.5 text-[#E2906E]" />
+          <span className="truncate">Blur / Redact</span>
         </button>
       </div>
 
@@ -938,6 +983,183 @@ export default function ControlPanel({
                     className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-zinc-800 accent-white"
                   />
                 </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'blur' && (
+          <div className="flex flex-col gap-5 animate-slide-down">
+            {/* Descriptive guidance card */}
+            <div className="flex flex-col gap-2 rounded-xl bg-zinc-900/60 border border-zinc-800 p-3.5">
+              <div className="flex items-start gap-2.5">
+                <div className="bg-[#E2906E]/10 p-2 rounded-lg text-[#E2906E] shrink-0">
+                  <EyeOff className="h-4 w-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-semibold text-white">Sensitive Segment Masking</h4>
+                  <p className="text-[10.5px] text-zinc-400 mt-0.5 leading-relaxed">
+                    Draw translucent blur zones to mask private text, credentials, keys, barcodes, or prices on receipts. You can drag and position them live on the canvas.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* CTA action button */}
+            <button
+              type="button"
+              onClick={() => {
+                const id = `blur_${Date.now()}`;
+                const newArea: BlurArea = {
+                  id,
+                  x: 35,
+                  y: 35,
+                  width: 30,
+                  height: 15,
+                  blur: 15,
+                };
+                setBlurAreas(prev => [...prev, newArea]);
+                setActiveBlurId(id);
+              }}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[#E2906E]/40 bg-[#E2906E]/5 p-3 text-xs font-semibold text-white transition hover:bg-[#E2906E]/10 hover:border-[#E2906E]/60 active:scale-98"
+            >
+              <Plus className="h-4 w-4 text-[#E2906E]" />
+              <span>Add Blur Mask</span>
+            </button>
+
+            {/* List labels */}
+            {blurAreas.length > 0 && (
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mt-1">
+                Active Masks ({blurAreas.length})
+              </div>
+            )}
+
+            {/* Empty state overlay container */}
+            {blurAreas.length === 0 && (
+              <div className="flex flex-col items-center justify-center border border-dashed border-zinc-800 rounded-xl p-6 text-center select-none">
+                <ShieldAlert className="h-8 w-8 text-zinc-700 mb-2" />
+                <span className="text-xs text-zinc-500 font-medium">No active blur overlays</span>
+                <p className="text-[10.5px] text-zinc-600 mt-0.5">
+                  Click 'Add Blur Mask' to redact sensitive fields.
+                </p>
+              </div>
+            )}
+
+            {/* Active blur boxes list */}
+            {blurAreas.length > 0 && (
+              <div className="flex flex-col gap-3">
+                {blurAreas.map((area, idx) => {
+                  const isSelected = activeBlurId === area.id;
+                  return (
+                    <div
+                      key={area.id}
+                      onClick={() => setActiveBlurId(area.id)}
+                      className={`group flex flex-col rounded-xl border p-3.5 transition-all duration-200 cursor-pointer ${
+                        isSelected
+                          ? 'border-[#E2906E] bg-[#E2906E]/5 shadow-md'
+                          : 'border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 hover:bg-zinc-900/80'
+                      }`}
+                    >
+                      {/* Header row */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] h-4.5 w-4.5 flex items-center justify-center rounded font-semibold font-mono ${
+                            isSelected ? 'bg-[#E2906E] text-zinc-950 font-bold' : 'bg-zinc-800 text-zinc-300'
+                          }`}>
+                            {idx + 1}
+                          </span>
+                          <span className="text-xs font-semibold text-white">Mask Region</span>
+                        </div>
+                        
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setBlurAreas(prev => prev.filter(a => a.id !== area.id));
+                            if (activeBlurId === area.id) setActiveBlurId(null);
+                          }}
+                          className="p-1 text-zinc-500 hover:text-red-500 rounded transition hover:bg-white/5"
+                          title="Delete this Mask"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Controls panel if selected */}
+                      {isSelected && (
+                        <div className="flex flex-col gap-4 mt-3.5 border-t border-dashed border-zinc-800 pt-3.5 animate-slide-down overflow-visible">
+                          {/* Width range */}
+                          <div className="flex flex-col gap-1.5" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-between text-[11px] text-zinc-400">
+                              <span>Width</span>
+                              <span className="font-mono text-white">{Math.round(area.width)}%</span>
+                            </div>
+                            <input
+                              type="range"
+                              min="5"
+                              max="100"
+                              step="1"
+                              value={area.width}
+                              onChange={(e) => {
+                                const nextVal = parseInt(e.target.value);
+                                setBlurAreas(prev => prev.map(a => a.id === area.id ? { ...a, width: nextVal, x: Math.min(a.x, 100 - nextVal) } : a));
+                              }}
+                              className="h-1.5 w-full cursor-pointer appearance-none rounded bg-[#18181b] border border-zinc-800 accent-[#E2906E]"
+                            />
+                          </div>
+
+                          {/* Height range */}
+                          <div className="flex flex-col gap-1.5" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-between text-[11px] text-zinc-400">
+                              <span>Height</span>
+                              <span className="font-mono text-white">{Math.round(area.height)}%</span>
+                            </div>
+                            <input
+                              type="range"
+                              min="5"
+                              max="100"
+                              step="1"
+                              value={area.height}
+                              onChange={(e) => {
+                                const nextVal = parseInt(e.target.value);
+                                setBlurAreas(prev => prev.map(a => a.id === area.id ? { ...a, height: nextVal, y: Math.min(a.y, 100 - nextVal) } : a));
+                              }}
+                              className="h-1.5 w-full cursor-pointer appearance-none rounded bg-[#18181b] border border-zinc-800 accent-[#E2906E]"
+                            />
+                          </div>
+
+                          {/* Blur amount */}
+                          <div className="flex flex-col gap-1.5" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-between text-[11px] text-zinc-400">
+                              <span>Blur Intensity</span>
+                              <span className="font-mono text-white">{area.blur}px</span>
+                            </div>
+                            <input
+                              type="range"
+                              min="2"
+                              max="80"
+                              step="1"
+                              value={area.blur}
+                              onChange={(e) => {
+                                const nextVal = parseInt(e.target.value);
+                                setBlurAreas(prev => prev.map(a => a.id === area.id ? { ...a, blur: nextVal } : a));
+                              }}
+                              className="h-1.5 w-full cursor-pointer appearance-none rounded bg-[#18181b] border border-zinc-800 accent-[#E2906E]"
+                            />
+                          </div>
+
+                          {/* Live drag indicator tip */}
+                          <div className="rounded-lg bg-zinc-950 p-2.5 border border-zinc-800 flex items-start gap-2">
+                            <div className="h-1.5 w-1.5 rounded-full bg-[#E2906E] translate-y-1.5 shrink-0" />
+                            <p className="text-[10px] text-zinc-500 leading-normal font-sans">
+                              Tip: You can drag this redact box directly on the live image canvas to place it over any sensitive text.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

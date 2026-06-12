@@ -47,6 +47,15 @@ export interface CanvasDimensions {
   height: number;
 }
 
+export interface BlurArea {
+  id: string;
+  x: number; // percentage from left, 0 to 100
+  y: number; // percentage from top, 0 to 100
+  width: number; // percentage width of frame, 5 to 100
+  height: number; // percentage height of frame, 5 to 100
+  blur: number; // blur intensity in px, 1 to 100
+}
+
 export interface HistoryItem {
   id: string;
   dataUrl: string;
@@ -62,5 +71,6 @@ export interface HistoryItem {
     aspectRatio: string;
     originalImgDataUrl: string;
     maskCanvasDataUrl?: string;
+    blurAreas?: BlurArea[];
   };
 }

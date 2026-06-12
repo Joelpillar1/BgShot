@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Move, RotateCw, Maximize2, AlertCircle, ArrowUpRight, ZoomIn, ZoomOut, RotateCcw, Hand } from 'lucide-react';
-import { Backdrop, ShadowOverlay, SubjectPlacement, SubjectEnhancement, SubjectShadow } from '../types';
+import { Move, RotateCw, Maximize2, AlertCircle, ArrowUpRight, ZoomIn, ZoomOut, RotateCcw, Hand, EyeOff, X } from 'lucide-react';
+import { Backdrop, ShadowOverlay, SubjectPlacement, SubjectEnhancement, SubjectShadow, BlurArea } from '../types';
 
 interface WorkspaceCanvasProps {
   originalImg: HTMLImageElement | null;
@@ -15,6 +15,10 @@ interface WorkspaceCanvasProps {
   onSelectSubject: () => void;
   isProcessing: boolean;
   maskTrigger?: number;
+  blurAreas: BlurArea[];
+  setBlurAreas: React.Dispatch<React.SetStateAction<BlurArea[]>>;
+  activeBlurId: string | null;
+  setActiveBlurId: (id: string | null) => void;
 }
 
 export default function WorkspaceCanvas({
@@ -30,6 +34,10 @@ export default function WorkspaceCanvas({
   onSelectSubject,
   isProcessing,
   maskTrigger,
+  blurAreas,
+  setBlurAreas,
+  activeBlurId,
+  setActiveBlurId,
 }: WorkspaceCanvasProps) {
   const parentRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -41,6 +49,11 @@ export default function WorkspaceCanvas({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [placementStart, setPlacementStart] = useState<SubjectPlacement>({ ...placement });
   const [dimensions, setDimensions] = useState<{ width: number; height: number }>({ width: 400, height: 400 });
+
+  // Workspace Blur Dragging States
+  const [activeBlurDrag, setActiveBlurDrag] = useState<string | null>(null);
+  const [blurDragStart, setBlurDragStart] = useState({ x: 0, y: 0 });
+  const [blurAreaStartPos, setBlurAreaStartPos] = useState({ x: 0, y: 0 });
 
   // Viewport Zoom & Drag-panning viewport states
   const [zoom, setZoom] = useState<number>(1.0);
@@ -306,6 +319,59 @@ export default function WorkspaceCanvas({
     setIsScaling(false);
   };
 
+  const handleBlurPointerDown = (e: React.PointerEvent, id: string) => {
+    if (isPanToolActive) return;
+    e.stopPropagation();
+    e.preventDefault();
+    setActiveBlurId(id);
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+
+    const area = blurAreas.find(a => a.id === id);
+    if (area) {
+      setBlurDragStart({ x: e.clientX, y: e.clientY });
+      setBlurAreaStartPos({ x: area.x, y: area.y });
+      setActiveBlurDrag(id);
+    }
+  };
+
+  const handleBlurPointerMove = (e: React.PointerEvent, id: string) => {
+    if (activeBlurDrag !== id || !containerRef.current) return;
+    e.stopPropagation();
+    e.preventDefault();
+    
+    const deltaX = e.clientX - blurDragStart.x;
+    const deltaY = e.clientY - blurDragStart.y;
+    
+    const containerWidth = containerRef.current.clientWidth;
+    const containerHeight = containerRef.current.clientHeight;
+    
+    const pctX = (deltaX / (containerWidth * zoom)) * 100;
+    const pctY = (deltaY / (containerHeight * zoom)) * 100;
+
+    const area = blurAreas.find(a => a.id === id);
+    if (!area) return;
+
+    // Boundaries: clamp value inside [0, 100 - size]
+    const nextX = Math.min(Math.max(blurAreaStartPos.x + pctX, 0), 100 - area.width);
+    const nextY = Math.min(Math.max(blurAreaStartPos.y + pctY, 0), 100 - area.height);
+
+    setBlurAreas(prev => prev.map(a => {
+      if (a.id === id) {
+        return { ...a, x: nextX, y: nextY };
+      }
+      return a;
+    }));
+  };
+
+  const handleBlurPointerUp = (e: React.PointerEvent, id: string) => {
+    if (activeBlurDrag === id) {
+      e.stopPropagation();
+      e.preventDefault();
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+      setActiveBlurDrag(null);
+    }
+  };
+
   // Setup visual filter adjustments
   const getFilterStyle = () => {
     const b = enhancement.brightness;
@@ -473,6 +539,64 @@ export default function WorkspaceCanvas({
               </div>
             </div>
           )}
+
+          {/* Dynamic Interactive Blur/Redaction Overlays */}
+          {originalImg && blurAreas && blurAreas.map((area) => (
+            <div
+              key={area.id}
+              style={{
+                position: 'absolute',
+                left: `${area.x}%`,
+                top: `${area.y}%`,
+                width: `${area.width}%`,
+                height: `${area.height}%`,
+                backdropFilter: `blur(${area.blur}px)`,
+                WebkitBackdropFilter: `blur(${area.blur}px)`,
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                border: activeBlurId === area.id ? '2px solid #E2906E' : '1px dashed rgba(255, 255, 255, 0.45)',
+                borderRadius: '6px',
+                zIndex: 42,
+                cursor: isPanToolActive ? 'inherit' : 'move',
+              }}
+              className="pointer-events-auto shadow-md overflow-visible select-none group"
+              onPointerDown={(e) => handleBlurPointerDown(e, area.id)}
+              onPointerMove={(e) => handleBlurPointerMove(e, area.id)}
+              onPointerUp={(e) => handleBlurPointerUp(e, area.id)}
+            >
+              {/* Inner Label for Blur Area */}
+              <div 
+                className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                style={{
+                  filter: 'none',
+                  backdropFilter: 'none',
+                }}
+              >
+                <div className="bg-zinc-950/75 border border-zinc-800 rounded px-1.5 py-0.5 text-[8px] font-mono text-zinc-300 uppercase tracking-wider flex items-center gap-1 scale-90 sm:scale-100 transition duration-250 select-none">
+                  <EyeOff className="h-2.5 w-2.5 text-[#E2906E]" />
+                  <span>Blur</span>
+                </div>
+              </div>
+
+              {/* Delete Icon Indicator floating at corner */}
+              {activeBlurId === area.id && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    setBlurAreas(prev => prev.filter(a => a.id !== area.id));
+                    if (activeBlurId === area.id) {
+                      setActiveBlurId(null);
+                    }
+                  }}
+                  className="absolute -top-2.5 -right-2.5 h-5 w-5 rounded-full bg-red-600 hover:bg-red-500 border border-zinc-800 text-white flex items-center justify-center scale-100 hover:scale-110 active:scale-95 transition-all shadow-lg pointer-events-auto z-50 cursor-pointer"
+                  title="Remove Blur Area"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          ))}
 
           {/* Post with ShipOS action overlay */}
           {originalImg && !isProcessing && (

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Backdrop, ShadowOverlay, SubjectPlacement, SubjectEnhancement, SubjectShadow, HistoryItem } from './types';
+import { Backdrop, ShadowOverlay, SubjectPlacement, SubjectEnhancement, SubjectShadow, HistoryItem, BlurArea } from './types';
 import { BACKDROPS, SHADOW_OVERLAYS } from './data/backdrops';
 import ImageUploader from './components/ImageUploader';
 import WorkspaceCanvas from './components/WorkspaceCanvas';
@@ -97,6 +97,8 @@ export default function App() {
   const [enhancement, setEnhancement] = useState<SubjectEnhancement>(INITIAL_ENHANCEMENT);
   const [shadowSettings, setShadowSettings] = useState<SubjectShadow>(INITIAL_SHADOW_SETTINGS);
   const [aspectRatio, setAspectRatio] = useState<string>('1:1');
+  const [blurAreas, setBlurAreas] = useState<BlurArea[]>([]);
+  const [activeBlurId, setActiveBlurId] = useState<string | null>(null);
 
   const handleExportSuccess = (dataUrl: string) => {
     let originalImgDataUrl = '';
@@ -146,6 +148,7 @@ export default function App() {
         aspectRatio: aspectRatio,
         originalImgDataUrl,
         maskCanvasDataUrl,
+        blurAreas: [...blurAreas],
       }
     };
     
@@ -198,7 +201,8 @@ export default function App() {
         shadowSettings: savedShadowSettings, 
         aspectRatio: savedAspectRatio, 
         originalImgDataUrl, 
-        maskCanvasDataUrl 
+        maskCanvasDataUrl,
+        blurAreas: savedBlurAreas
       } = item.state;
 
       // 1. Rebuild and mount HTMLImageElement
@@ -212,6 +216,8 @@ export default function App() {
         setEnhancement(savedEnhancement);
         setShadowSettings(savedShadowSettings);
         setAspectRatio(savedAspectRatio);
+        setBlurAreas(savedBlurAreas || []);
+        setActiveBlurId(null);
 
         // Map backdrops
         const backdropMatch = BACKDROPS.find(b => b.id === selectedBackdropId);
@@ -413,6 +419,8 @@ export default function App() {
     setOriginalImg(null);
     setMaskCanvas(null);
     setPlacement(INITIAL_PLACEMENT);
+    setBlurAreas([]);
+    setActiveBlurId(null);
     setErrorMessage(null);
   };
 
@@ -649,11 +657,15 @@ export default function App() {
                 onSelectSubject={() => {}}
                 isProcessing={isProcessing}
                 maskTrigger={maskTrigger}
+                blurAreas={blurAreas}
+                setBlurAreas={setBlurAreas}
+                activeBlurId={activeBlurId}
+                setActiveBlurId={setActiveBlurId}
               />
             </div>
           )}
         </main>
-
+ 
         {/* Right Side: Studio adjustments controls */}
         {originalImg && (
           <aside className="w-full lg:w-96 select-none border-t border-zinc-900 lg:border-t-0 shadow-2xl bg-[#121214] lg:h-full shrink-0 lg:overflow-hidden">
@@ -674,6 +686,10 @@ export default function App() {
               originalImg={originalImg}
               maskCanvas={maskCanvas}
               onExportSuccess={handleExportSuccess}
+              blurAreas={blurAreas}
+              setBlurAreas={setBlurAreas}
+              activeBlurId={activeBlurId}
+              setActiveBlurId={setActiveBlurId}
             />
           </aside>
         )}
