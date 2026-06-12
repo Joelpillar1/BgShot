@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Backdrop, ShadowOverlay, SubjectPlacement, SubjectEnhancement, SubjectShadow } from '../types';
 import { SHADOW_OVERLAYS } from '../data/backdrops';
-import { Sliders, Sun, Palette, Sparkles, Download, Layers, FlipHorizontal, Eye, RefreshCw, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Sliders, Sun, Palette, Sparkles, Download, Layers, FlipHorizontal, Eye, RefreshCw, X, ChevronDown, ChevronUp, Rocket, ExternalLink } from 'lucide-react';
 import BackdropSelector from './BackdropSelector';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface ControlPanelProps {
   selectedBackdrop: Backdrop;
@@ -22,6 +23,92 @@ interface ControlPanelProps {
   maskCanvas: HTMLCanvasElement | null;
   onExportSuccess?: (dataUrl: string) => void;
 }
+
+const SHIPOS_PLATFORMS = [
+  { 
+    name: 'Instagram', 
+    color: 'bg-gradient-to-tr from-[#f9ce34] via-[#ee2a7b] to-[#6228d7]',
+    icon: (
+      <svg className="w-2.2 h-2.2 stroke-white fill-none" viewBox="0 0 24 24" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+        <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+        <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+      </svg>
+    )
+  },
+  { 
+    name: 'Twitter / X', 
+    color: 'bg-black border border-white/5',
+    icon: (
+      <svg className="w-1.8 h-1.8 fill-white" viewBox="0 0 24 24">
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+      </svg>
+    )
+  },
+  { 
+    name: 'Facebook', 
+    color: 'bg-[#1877f2]',
+    icon: (
+      <svg className="w-2.2 h-2.2 fill-white" viewBox="0 0 24 24">
+        <path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c4.56-.93 8-4.96 8-9.8z"/>
+      </svg>
+    )
+  },
+  { 
+    name: 'TikTok', 
+    color: 'bg-[#010101] border border-white/5',
+    icon: (
+      <svg className="w-2.2 h-2.2 fill-white" viewBox="0 0 24 24">
+        <path d="M12.53.02C13.84 0 15.14.01 16.44 0c.08 1.53.63 3.09 1.75 4.17 1.12.94 2.58 1.34 3.96 1.45v3.11c-1.25-.07-2.52-.45-3.51-1.25-.56-.42-1.02-.95-1.38-1.55v6.52c-.08 2.03-1.01 3.99-2.73 5.06-1.57.99-3.66 1.11-5.32.33-1.72-.77-2.94-2.53-3.07-4.43-.22-2.31 1.25-4.63 3.39-5.49.53-.21 1.1-.34 1.67-.38v3.13c-.98.11-1.92.68-2.34 1.58-.5 1.05-.22 2.41.67 3.17.94.81 2.45.69 3.22-.32.48-.62.59-1.42.59-2.19V.02z"/>
+      </svg>
+    )
+  },
+  { 
+    name: 'YouTube', 
+    color: 'bg-[#ff0000]',
+    icon: (
+      <svg className="w-2.2 h-2.2 fill-white" viewBox="0 0 24 24">
+        <path d="M23.498 6.163a3.003 3.003 0 0 0-2.11-2.11C19.518 3.5 12 3.5 12 3.5s-7.518 0-9.388.553a3.003 3.003 0 0 0-2.11 2.11C0 8.033 0 12 0 12s0 3.967.502 5.837a3.003 3.003 0 0 0 2.11 2.11C6.482 20.5 12 20.5 12 20.5s7.518 0 9.388-.553a3.003 3.003 0 0 0 2.11-2.11C24 15.967 24 12 24 12s0-3.967-.502-5.837zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+      </svg>
+    )
+  },
+  { 
+    name: 'BlueSky', 
+    color: 'bg-[#0560ff]',
+    icon: (
+      <svg className="w-2.2 h-2.2 fill-white" viewBox="0 0 24 24">
+        <path d="M12 10.8c-1.2-2-4.1-5.6-7.8-6.5-1.9-.5-4.2-.2-4.2 2.7 0 1.2.5 4.6 1.7 6.3 1.9 2.7 5.2 3.8 6.6 4-.8.7-2 1.8-3.4 1.8-3 0-4.1-2-4.5-3.3-.4-1.2-.4-1.2-.4-1.2s0 0 0 0C0 14.6 0 14.6 0 14.6c.1.9.4 1.8.9 2.6 1 1.7 3 2.8 5.6 2.8 4 0 5-2.2 5.5-3.5.5 1.3 1.5 3.5 5.5 3.5 2.6 0 4.6-1.1 5.6-2.8.5-.8.8-1.7.9-2.6 0 0 0 0 0 0c0 0 0 0-.4 1.2-.4 1.3-1.5 3.3-4.5 3.3-1.4 0-2.6-1.1-3.4-1.8 1.4-.2 4.7-1.3 6.6-4 1.2-1.7 1.7-5.1 1.7-6.3 0-2.9-2.3-3.2-4.2-2.7-3.7.9-6.6 4.5-7.8 6.5z"/>
+      </svg>
+    )
+  },
+  { 
+    name: 'Pinterest', 
+    color: 'bg-[#bd081c]',
+    icon: (
+      <svg className="w-2.2 h-2.2 fill-white" viewBox="0 0 24 24">
+        <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 5.079 3.158 9.417 7.618 11.162-.105-.946-.199-2.385.041-3.412.219-.937 1.409-5.977 1.409-5.977s-.359-.72-.359-1.781c0-1.663.967-2.909 2.17-2.909 1.023 0 1.517.769 1.517 1.686 0 1.03-.653 2.567-.989 3.993-.283 1.196.593 2.167 1.775 2.167 2.13 0 3.761-2.245 3.761-5.482 0-2.861-2.062-4.868-5.005-4.868-3.414 0-5.418 2.561-5.418 5.204 0 1.03.399 2.13.896 2.73.098.12.113.223.083.339-.09.375-.291 1.178-.33 1.348-.053.223-.172.27-.397.166-1.484-.69-2.409-2.859-2.409-4.6 0-3.743 2.722-7.182 7.842-7.182 4.117 0 7.317 2.933 7.317 6.85 0 4.09-2.576 7.38-6.151 7.38-1.202 0-2.333-.625-2.719-1.362l-.74 2.818c-.267 1.019-.99 2.294-1.474 3.084 1.12.346 2.3.535 3.526.535 6.623 0 11.993-5.372 11.993-12.002C24 5.37 18.638 0 12.017 0z"/>
+      </svg>
+    )
+  },
+  { 
+    name: 'Threads', 
+    color: 'bg-black border border-white/5',
+    icon: (
+      <svg className="w-1.8 h-1.8 stroke-white fill-none" viewBox="0 0 24 24" strokeWidth="2.5">
+        <path d="M12 18.25a6.25 6.25 0 1 1 6.25-6.25c0 1.84-1.5 3.25-3 3.25s-2.5-1.18-2.5-2.5V10c0-1.1-.9-2-2-2s-2 .9-2 2v2.5c0 1.1.9 2 2 2s2-.9 2-2V10a4.5 4.5 0 1 0-.75 2.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    )
+  },
+  { 
+    name: 'LinkedIn', 
+    color: 'bg-[#0077b5]',
+    icon: (
+      <svg className="w-2.2 h-2.2 fill-white" viewBox="0 0 24 24">
+        <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.779-1.75-1.75s.784-1.75 1.75-1.75 1.75.779 1.75 1.75-.784 1.75-1.75 1.75zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+      </svg>
+    )
+  }
+];
 
 export default function ControlPanel({
   selectedBackdrop,
@@ -46,6 +133,15 @@ export default function ControlPanel({
   const [exportedImageUrl, setExportedImageUrl] = useState<string | null>(null);
   const [showPosition, setShowPosition] = useState(false);
   const [showColorAdjustments, setShowColorAdjustments] = useState(false);
+  const [activeAdSlide, setActiveAdSlide] = useState(0);
+
+  // ShipOS sponsored banner slideshow interval
+  React.useEffect(() => {
+    const adInterval = setInterval(() => {
+      setActiveAdSlide((prev) => (prev + 1) % 3);
+    }, 5000);
+    return () => clearInterval(adInterval);
+  }, []);
 
   // States to facilitate manual & dynamic typed custom aspect ratios
   const [customWStr, setCustomWStr] = useState('1');
@@ -916,6 +1012,169 @@ export default function ControlPanel({
                     If the download did not trigger automatically: <strong className="text-white">right-click</strong> the image or <strong className="text-white">tap and hold</strong> on mobile devices to save it directly to your camera roll.
                   </div>
                 </div>
+              </div>
+
+              {/* ShipOS Sponsored Visual Ad Card (Modern Slideshow / Rolling Carousels) */}
+              <div className="mt-3 rounded-xl bg-[#D46038] p-3 border border-white/10 font-sans text-white overflow-hidden relative shadow-md flex flex-col items-center text-center select-none min-h-[235px] justify-between">
+                
+                {/* Decorative background ambient glows */}
+                <div className="absolute -bottom-6 -left-6 w-16 h-16 bg-white/5 rounded-full filter blur-lg pointer-events-none" />
+                <div className="absolute -bottom-10 -right-10 w-20 h-20 bg-white/10 rounded-full filter blur-lg pointer-events-none" />
+                <div className="absolute -top-8 -right-8 w-20 h-20 bg-white/10 rounded-full filter blur-lg pointer-events-none" />
+
+                <div className="w-full flex flex-col items-center z-10">
+                  <AnimatePresence mode="wait">
+                    {activeAdSlide === 0 && (
+                      <motion.div
+                        key="ad-slide-1"
+                        initial={{ opacity: 0, x: 8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -8 }}
+                        transition={{ duration: 0.25 }}
+                        className="flex flex-col items-center w-full"
+                      >
+                        {/* Pill Title Badge */}
+                        <div className="relative inline-flex items-center justify-center bg-white/10 px-2 py-0.5 text-[9px] font-bold text-white rounded-md border border-white/10 shadow-sm backdrop-blur-md select-none tracking-wide gap-1 mb-1.5">
+                          <Rocket className="h-2.5 w-2.5 text-white fill-white/10" />
+                          <span>ShipOS</span>
+                        </div>
+
+                        {/* Heading */}
+                        <h4 className="relative text-xs font-black text-white leading-tight tracking-tight select-none mb-0.5">
+                          Write once. Ship everywhere.
+                        </h4>
+
+                        {/* Description */}
+                        <p className="relative text-[9.5px] text-white/85 font-medium select-none mb-2 leading-relaxed max-w-[210px]">
+                          One dashboard. Every platform. Total control.
+                        </p>
+
+                        {/* Social / Messaging Icons */}
+                        <div className="relative flex items-center justify-center gap-0.5 max-w-[220px] mb-2.5 select-none">
+                          {SHIPOS_PLATFORMS.map((p, idx) => (
+                            <div
+                              key={p.name + idx}
+                              className={`w-4.5 h-4.5 flex items-center justify-center rounded transition-all duration-300 hover:scale-110 active:scale-95 shadow-sm select-none ${p.color}`}
+                              title={`${p.name} integration`}
+                            >
+                              {p.icon}
+                            </div>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {activeAdSlide === 1 && (
+                      <motion.div
+                        key="ad-slide-2"
+                        initial={{ opacity: 0, x: 8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -8 }}
+                        transition={{ duration: 0.25 }}
+                        className="flex flex-col items-center w-full"
+                      >
+                        {/* Pill Title Badge */}
+                        <div className="relative inline-flex items-center justify-center bg-white/10 px-2 py-0.5 text-[9px] font-bold text-white rounded-md border border-white/10 shadow-sm backdrop-blur-md select-none tracking-wide gap-1 mb-2">
+                          <Sparkles className="h-2.5 w-2.5 text-white" />
+                          <span>ShipOS</span>
+                        </div>
+
+                        {/* Heading */}
+                        <h4 className="relative text-xs sm:text-sm font-black text-white leading-tight tracking-tight select-none mb-1.5 max-w-[210px]">
+                          5 platforms. 1 dashboard.<br />0 excuses.
+                        </h4>
+
+                        {/* Description */}
+                        <p className="relative text-[9.5px] text-white/85 font-medium select-none mb-2 leading-relaxed max-w-[200px]">
+                          Stop switching apps. Start shipping content.
+                        </p>
+
+                        {/* Social / Messaging Icons */}
+                        <div className="relative flex items-center justify-center gap-0.5 max-w-[220px] mb-2.5 select-none">
+                          {SHIPOS_PLATFORMS.map((p, idx) => (
+                            <div
+                              key={p.name + idx}
+                              className={`w-4.5 h-4.5 flex items-center justify-center rounded transition-all duration-300 hover:scale-110 active:scale-95 shadow-sm select-none ${p.color}`}
+                              title={`${p.name} integration`}
+                            >
+                              {p.icon}
+                            </div>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {activeAdSlide === 2 && (
+                      <motion.div
+                        key="ad-slide-3"
+                        initial={{ opacity: 0, x: 8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -8 }}
+                        transition={{ duration: 0.25 }}
+                        className="flex flex-col items-center w-full"
+                      >
+                        {/* Pill Title Badge */}
+                        <div className="relative inline-flex items-center justify-center bg-white/10 px-2 py-0.5 text-[9px] font-bold text-white rounded-md border border-white/10 shadow-sm backdrop-blur-md select-none tracking-wide gap-1 mb-2">
+                          <Rocket className="h-2.5 w-2.5 text-white fill-white/10" />
+                          <span>ShipOS</span>
+                        </div>
+
+                        {/* Heading */}
+                        <h4 className="relative text-xs sm:text-sm font-black text-white leading-tight tracking-tight select-none mb-1.5 max-w-[220px]">
+                          Creators waste 3 hours a week on formatting.
+                        </h4>
+
+                        {/* Description */}
+                        <p className="relative text-[9.5px] text-white/85 font-medium select-none mb-2 leading-relaxed max-w-[200px]">
+                          ShipOS gives those hours back. Every week.
+                        </p>
+
+                        {/* Social / Messaging Icons */}
+                        <div className="relative flex items-center justify-center gap-0.5 max-w-[220px] mb-2.5 select-none">
+                          {SHIPOS_PLATFORMS.map((p, idx) => (
+                            <div
+                              key={p.name + idx}
+                              className={`w-4.5 h-4.5 flex items-center justify-center rounded transition-all duration-300 hover:scale-110 active:scale-95 shadow-sm select-none ${p.color}`}
+                              title={`${p.name} integration`}
+                            >
+                              {p.icon}
+                            </div>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* Shared controls footer: Button + Dots Indicator */}
+                <div className="w-full flex flex-col items-center z-10">
+                  {/* Call To Action Button (Decreased vertical padding & Dynamic CTA Text) */}
+                  <a
+                    href="https://shipospro.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="relative w-full max-w-[190px] bg-white text-[#D46038] font-black text-[10.5px] py-1.5 px-3 rounded-lg shadow hover:bg-zinc-50 hover:scale-[1.02] active:scale-98 transition duration-200 text-center cursor-pointer select-none"
+                  >
+                    {activeAdSlide === 0 ? "Try it for $0 (7 days)" :
+                     activeAdSlide === 1 ? "Try Free for 7 Days" :
+                     "Get Started Free"}
+                  </a>
+
+                  {/* Manual pagination dots indicator */}
+                  <div className="flex items-center justify-center gap-1.5 mt-2.5 select-none">
+                    {[0, 1, 2].map((idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setActiveAdSlide(idx)}
+                        className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
+                          activeAdSlide === idx ? 'bg-white w-3' : 'bg-white/40 hover:bg-white/60'
+                        }`}
+                        aria-label={`Go to slide ${idx + 1}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+
               </div>
 
               <div className="mt-6 flex flex-col gap-3">
