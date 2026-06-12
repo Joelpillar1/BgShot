@@ -118,6 +118,10 @@ export default function WorkspaceCanvas({
 
   // Pointer panning canvas handlers
   const handleParentPointerDown = (e: React.PointerEvent) => {
+    // Disable viewport dragging / canvas panning on mobile/touch devices
+    const isMobileOrTouch = e.pointerType === 'touch' || window.innerWidth < 1024;
+    if (isMobileOrTouch) return;
+
     // Only pan if we click directly on the parent backdrop area,
     // OR if the dedicated Spacebar/button Hand/Pan tool is active.
     const isParent = e.target === e.currentTarget;
@@ -418,7 +422,7 @@ export default function WorkspaceCanvas({
     >
       {/* Zoom / Pan helper hint toast */}
       {originalImg && zoom > 1.0 && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 bg-zinc-950/85 text-[10px] border border-zinc-800/60 text-zinc-350 px-3 py-1.5 rounded-full pointer-events-none backdrop-blur-md shadow-xl flex items-center gap-1">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 bg-zinc-950/85 text-[10px] border border-zinc-800/60 text-zinc-350 px-3 py-1.5 rounded-full pointer-events-none backdrop-blur-md shadow-xl hidden md:flex items-center gap-1">
           <Hand className="h-3 w-3 text-[#E2906E]" />
           <span>Drag backdrop or hold Space to pan composition</span>
         </div>
@@ -505,7 +509,7 @@ export default function WorkspaceCanvas({
             >
               {/* Position and Scale Wrapper */}
               <div
-                className={`pointer-events-auto relative select-none ${
+                className={`pointer-events-auto relative select-none touch-none ${
                   isPanToolActive ? 'cursor-grab' : 'cursor-grab active:cursor-grabbing'
                 }`}
                 onClick={(e) => {
@@ -558,7 +562,7 @@ export default function WorkspaceCanvas({
                 zIndex: 42,
                 cursor: isPanToolActive ? 'inherit' : 'move',
               }}
-              className="pointer-events-auto shadow-md overflow-visible select-none group"
+              className="pointer-events-auto shadow-md overflow-visible select-none group touch-none"
               onPointerDown={(e) => handleBlurPointerDown(e, area.id)}
               onPointerMove={(e) => handleBlurPointerMove(e, area.id)}
               onPointerUp={(e) => handleBlurPointerUp(e, area.id)}
@@ -604,16 +608,17 @@ export default function WorkspaceCanvas({
               href="https://www.myshipos.com/"
               target="_blank"
               rel="noopener noreferrer"
-              className="absolute top-3 right-3 z-30 group inline-flex items-center gap-1.5 rounded-xl bg-zinc-950/85 hover:bg-zinc-900 border border-zinc-800/80 hover:border-[#d26e46]/60 px-3 py-1.5 text-xs font-semibold text-white shadow-2xl transition-all duration-300 pointer-events-auto backdrop-blur-md active:scale-95"
+              className="absolute top-2 right-2 sm:top-3 sm:right-3 z-30 group inline-flex items-center gap-1 sm:gap-1.5 rounded-lg sm:rounded-xl bg-zinc-950/85 hover:bg-zinc-900 border border-zinc-800/80 hover:border-[#d26e46]/60 px-2 py-1 sm:px-3 sm:py-1.5 text-[10px] sm:text-xs font-semibold text-white shadow-2xl transition-all duration-300 pointer-events-auto backdrop-blur-md active:scale-95"
             >
-              <span className="flex items-center gap-0.5 text-[10px] sm:text-[11px] font-black tracking-tight text-white" style={{ fontFamily: "ui-sans-serif, system-ui, sans-serif" }}>
+              <span className="flex items-center gap-0.5 text-[9px] sm:text-[11px] font-black tracking-tight text-white" style={{ fontFamily: "ui-sans-serif, system-ui, sans-serif" }}>
                 Ship
-                <span className="inline-flex items-center justify-center bg-[#d26e46] text-[7.5px] font-bold text-white px-0.5 rounded-[3px] h-[12px] min-w-[14px] leading-none ml-0.5">
+                <span className="inline-flex items-center justify-center bg-[#d26e46] text-[6.5px] sm:text-[7.5px] font-bold text-white px-0.5 rounded-[2px] sm:rounded-[3px] h-[10px] sm:h-[12px] min-w-[12px] sm:min-w-[14px] leading-none ml-0.5">
                   OS
                 </span>
+                <ArrowUpRight className="inline sm:hidden h-2.5 w-2.5 text-[#d26e46] ml-0.5" />
               </span>
-              <span className="h-3 w-[1px] bg-zinc-800" />
-              <span className="text-[9.5px] font-bold uppercase tracking-wider text-zinc-300 group-hover:text-white flex items-center gap-1">
+              <span className="hidden sm:inline h-3 w-[1px] bg-zinc-800" />
+              <span className="hidden sm:flex text-[9.5px] font-bold uppercase tracking-wider text-zinc-300 group-hover:text-white items-center gap-1">
                 Post with ShipOS
                 <ArrowUpRight className="h-3 w-3 text-[#d26e46] group-hover:text-white transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
               </span>
@@ -634,7 +639,7 @@ export default function WorkspaceCanvas({
 
         {/* Small interaction reminder */}
         {originalImg && (
-          <div className="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-zinc-500">
+          <div className="mt-3 hidden md:flex items-center justify-center gap-1.5 text-[11px] text-zinc-500">
             <AlertCircle className="h-3.5 w-3.5 text-zinc-400" />
             <span>Click and drag the image to adjust its position. Use the right-hand panel sliders to control size, rotation, and corner roundedness!</span>
           </div>
@@ -643,7 +648,7 @@ export default function WorkspaceCanvas({
 
       {/* Floating Canvas Zoom and Pan Tool controls panel */}
       {originalImg && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center bg-zinc-950/90 border border-zinc-800 px-2 py-1.5 rounded-full shadow-2xl backdrop-blur-md transition-all duration-300 gap-1 select-none">
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 hidden md:flex items-center bg-zinc-950/90 border border-zinc-800 px-2 py-1.5 rounded-full shadow-2xl backdrop-blur-md transition-all duration-300 gap-1 select-none">
           {/* Active Hand Mode button */}
           <button
             type="button"

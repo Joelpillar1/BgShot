@@ -425,7 +425,7 @@ export default function App() {
   };
 
   return (
-    <div id="app-root-container" className="flex min-h-screen lg:h-screen lg:overflow-hidden flex-col bg-[#0d0d0f] font-sans antialiased text-white select-none">
+    <div id="app-root-container" className="flex h-[100dvh] max-h-[100dvh] flex-col bg-[#0d0d0f] font-sans antialiased text-white select-none overflow-hidden">
       {/* ShipOS Ads Promo Banner Slider */}
       <div id="shipos-promo-banner" className="sticky top-0 z-[60] bg-[#C4622D] border-b border-[#ab4f20] overflow-hidden h-10 sm:h-12 flex items-center select-none shadow-sm w-full">
         <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 flex items-center justify-between gap-4 h-full">
@@ -558,7 +558,8 @@ export default function App() {
                 onClick={handleClearImage}
                 className="rounded-full border border-zinc-800 bg-zinc-900/40 px-3.5 py-1.5 text-xs font-semibold text-zinc-400 transition hover:border-zinc-700 hover:text-white active:scale-95 cursor-pointer"
               >
-                Clear/Reset
+                <span className="hidden sm:inline">Clear/Reset</span>
+                <span className="sm:hidden">Reset</span>
               </button>
             </>
           )}
@@ -566,9 +567,9 @@ export default function App() {
       </header>
 
       {/* Main Body */}
-      <div className="flex flex-1 flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
+      <div className="flex flex-1 flex-col lg:flex-row overflow-hidden min-h-0">
         {/* Left Side: Upload Zone / Live Canvas Compositor Preview */}
-        <main className="sticky top-[104px] sm:top-[112px] lg:static z-20 flex flex-col justify-between bg-zinc-950 lg:bg-zinc-950/30 border-b border-zinc-900 lg:border-b-0 shrink-0 lg:shrink lg:flex-1 lg:h-full lg:overflow-hidden">
+        <main className="relative z-20 flex flex-col justify-between bg-zinc-950 lg:bg-zinc-950/30 border-b border-zinc-900 lg:border-b-0 shrink-0 lg:shrink lg:flex-1 h-[290px] xs:h-[330px] sm:h-[390px] md:h-[450px] lg:h-full lg:overflow-hidden">
           {!originalImg ? (
             <div className="flex flex-1 items-center justify-center p-6 md:p-12">
               <div className="w-full max-w-sm rounded-[28px] border border-zinc-900 bg-[#121214] p-8 shadow-2xl relative overflow-hidden">
@@ -616,7 +617,7 @@ export default function App() {
                   }
                 }
               }}
-              className="relative flex flex-1 flex-col justify-center lg:h-full lg:overflow-hidden"
+              className="relative flex flex-1 flex-col justify-center h-full lg:overflow-hidden"
             >
               {/* Drag over overlay visual */}
               {isDraggingOver && (
@@ -668,7 +669,7 @@ export default function App() {
  
         {/* Right Side: Studio adjustments controls */}
         {originalImg && (
-          <aside className="w-full lg:w-96 select-none border-t border-zinc-900 lg:border-t-0 shadow-2xl bg-[#121214] lg:h-full shrink-0 lg:overflow-hidden">
+          <aside className="relative z-25 w-full lg:w-96 select-none border-t border-zinc-900 lg:border-t-0 shadow-2xl bg-[#121214] flex-1 lg:h-full min-h-0 shrink-0 lg:overflow-hidden">
             <ControlPanel
               selectedBackdrop={selectedBackdrop}
               onSelectBackdrop={setSelectedBackdrop}

@@ -491,9 +491,9 @@ export default function ControlPanel({
   };
 
   return (
-    <div className="flex flex-col h-auto lg:h-full bg-[#121214] border-t lg:border-t-0 lg:border-l border-zinc-900 overflow-y-visible lg:overflow-y-auto">
+    <div className="flex flex-col h-full bg-[#121214] border-t lg:border-t-0 lg:border-l border-zinc-900 overflow-y-auto">
       {/* Tab Switcher Headers */}
-      <div className="grid grid-cols-4 border-b border-zinc-900 text-[10px] sm:text-xs font-sans">
+      <div className="sticky top-0 z-30 bg-[#121214] grid grid-cols-4 border-b border-zinc-900 text-[10px] sm:text-xs font-sans">
         <button
           onClick={() => setActiveTab('backdrop')}
           className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-3 border-b-2 transition ${currentTabClass('backdrop')}`}
