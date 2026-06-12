@@ -610,19 +610,6 @@ export default function App() {
               }}
               className="relative flex flex-1 flex-col justify-center lg:h-full lg:overflow-hidden"
             >
-              {/* Floating Action Button inside active workspace */}
-              <div className="absolute top-4 left-4 z-30 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900/80 px-4 py-2 text-xs font-semibold text-white backdrop-blur-md shadow-xl transition-all duration-300 hover:border-[#D46038]/50 hover:bg-[#D46038]/30 active:scale-95 cursor-pointer hover:shadow-2xl"
-                  title="Upload a new item or different subject image directly in place"
-                >
-                  <Plus className="h-4 w-4 text-[#E2906E]" />
-                  <span>Upload Another Image</span>
-                </button>
-              </div>
-
               {/* Drag over overlay visual */}
               {isDraggingOver && (
                 <div className="absolute inset-0 z-40 flex items-center justify-center bg-[#0d0d0f]/85 backdrop-blur-sm p-6 pointer-events-none transition-all duration-300">

@@ -174,6 +174,13 @@ export const BACKDROPS: Backdrop[] = [
   },
   // Real Studio Staging Backdrops (High-Res Curated Unsplash Ranges)
   {
+    id: 'img-starfish-turquoise',
+    name: 'Starfish Turquoise Sand',
+    category: 'images',
+    value: 'https://images.unsplash.com/photo-1505118380757-91f5f5632de0?auto=format&fit=crop&w=1200&q=85',
+    textColor: 'dark'
+  },
+  {
     id: 'img-liquid-sun',
     name: 'Liquid Sunshine',
     category: 'images',

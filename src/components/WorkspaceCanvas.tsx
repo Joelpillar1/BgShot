@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Move, RotateCw, Maximize2, AlertCircle, ArrowUpRight } from 'lucide-react';
+import { Move, RotateCw, Maximize2, AlertCircle, ArrowUpRight, ZoomIn, ZoomOut, RotateCcw, Hand } from 'lucide-react';
 import { Backdrop, ShadowOverlay, SubjectPlacement, SubjectEnhancement, SubjectShadow } from '../types';
 
 interface WorkspaceCanvasProps {
@@ -41,6 +41,99 @@ export default function WorkspaceCanvas({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [placementStart, setPlacementStart] = useState<SubjectPlacement>({ ...placement });
   const [dimensions, setDimensions] = useState<{ width: number; height: number }>({ width: 400, height: 400 });
+
+  // Viewport Zoom & Drag-panning viewport states
+  const [zoom, setZoom] = useState<number>(1.0);
+  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isPanningCanvas, setIsPanningCanvas] = useState<boolean>(false);
+  const [panStart, setPanStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isPanToolActive, setIsPanToolActive] = useState<boolean>(false);
+
+  // Spacebar keybind for Pan Tool toggle (hold/release)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === 'INPUT' || 
+        target.tagName === 'TEXTAREA' || 
+        target.isContentEditable
+      ) {
+        return;
+      }
+      if (e.code === 'Space') {
+        e.preventDefault();
+        setIsPanToolActive(true);
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        setIsPanToolActive(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
+
+  // Trackpad pinch-to-zoom / Mouse-wheel + Command/Ctrl zoom listener
+  useEffect(() => {
+    const parent = parentRef.current;
+    if (!parent) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const factor = 0.05;
+        const delta = -e.deltaY * factor;
+        setZoom((prev) => {
+          const next = Math.min(Math.max(prev + (delta > 0 ? 0.1 : -0.1), 0.25), 4.0);
+          return Math.round(next * 100) / 100;
+        });
+      }
+    };
+
+    parent.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      parent.removeEventListener('wheel', handleWheel);
+    };
+  }, []);
+
+  // Pointer panning canvas handlers
+  const handleParentPointerDown = (e: React.PointerEvent) => {
+    // Only pan if we click directly on the parent backdrop area,
+    // OR if the dedicated Spacebar/button Hand/Pan tool is active.
+    const isParent = e.target === e.currentTarget;
+    const isCanvasCompositorClick = containerRef.current?.contains(e.target as Node);
+    const hasPanAttr = (e.target as HTMLElement).getAttribute('data-pan-target') === 'true';
+
+    const shouldPan = isParent || hasPanAttr || (isPanToolActive && isCanvasCompositorClick);
+    const isInteractiveBtn = (e.target as HTMLElement).closest('a, button, select, input');
+
+    if (!shouldPan || isInteractiveBtn) return;
+
+    e.preventDefault();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    setIsPanningCanvas(true);
+    setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+  };
+
+  const handleParentPointerMove = (e: React.PointerEvent) => {
+    if (!isPanningCanvas) return;
+    const x = e.clientX - panStart.x;
+    const y = e.clientY - panStart.y;
+    setPan({ x, y });
+  };
+
+  const handleParentPointerUp = (e: React.PointerEvent) => {
+    if (!isPanningCanvas) return;
+    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    setIsPanningCanvas(false);
+  };
 
   // Calculate maximum fitting dimensions based on parent container size
   useEffect(() => {
@@ -147,6 +240,10 @@ export default function WorkspaceCanvas({
 
   // Drag handlers for the subject
   const handlePointerDown = (e: React.PointerEvent, action: 'drag' | 'rotate' | 'scale') => {
+    if (isPanToolActive && action === 'drag') {
+      // Let pointer down event bubble up to trigger workspace panning!
+      return;
+    }
     e.preventDefault();
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     
@@ -169,8 +266,9 @@ export default function WorkspaceCanvas({
       const containerWidth = containerRef.current.clientWidth;
       const containerHeight = containerRef.current.clientHeight;
 
-      const pctX = (deltaX / containerWidth) * 100;
-      const pctY = (deltaY / containerHeight) * 100;
+      // Adjust coordinate mapping based on zoom level to ensure tactile alignment on-screen
+      const pctX = (deltaX / (containerWidth * zoom)) * 100;
+      const pctY = (deltaY / (containerHeight * zoom)) * 100;
 
       setPlacement((prev) => ({
         ...prev,
@@ -243,16 +341,40 @@ export default function WorkspaceCanvas({
   };
 
   return (
-    <div ref={parentRef} className="flex flex-1 flex-col items-center justify-center p-3 sm:p-4 lg:p-6 w-full h-full min-h-0 overflow-hidden relative">
+    <div 
+      ref={parentRef} 
+      className={`flex flex-1 flex-col items-center justify-center p-3 sm:p-4 lg:p-6 w-full h-full min-h-0 overflow-hidden relative select-none ${
+        isPanToolActive ? 'cursor-grab active:cursor-grabbing' : ''
+      }`}
+      onPointerDown={handleParentPointerDown}
+      onPointerMove={handleParentPointerMove}
+      onPointerUp={handleParentPointerUp}
+    >
+      {/* Zoom / Pan helper hint toast */}
+      {originalImg && zoom > 1.0 && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 bg-zinc-950/85 text-[10px] border border-zinc-800/60 text-zinc-350 px-3 py-1.5 rounded-full pointer-events-none backdrop-blur-md shadow-xl flex items-center gap-1">
+          <Hand className="h-3 w-3 text-[#E2906E]" />
+          <span>Drag backdrop or hold Space to pan composition</span>
+        </div>
+      )}
+
       {/* Aspect Wrapper Box */}
       <div 
-        style={{ width: `${dimensions.width}px`, height: `${dimensions.height}px` }} 
-        className="relative shrink-0 flex flex-col justify-center"
+        style={{ 
+          width: `${dimensions.width}px`, 
+          height: `${dimensions.height}px`,
+          transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
+          transformOrigin: 'center',
+          transition: isPanningCanvas ? 'none' : 'transform 0.15s ease-out',
+        }} 
+        className="relative shrink-0 flex flex-col justify-center select-none"
       >
         <div
           ref={containerRef}
           id="workspace-compositor-frame"
-          className="relative h-full w-full overflow-hidden rounded-2xl bg-neutral-900 shadow-2xl transition-all duration-300"
+          className={`relative h-full w-full overflow-hidden rounded-2xl bg-neutral-900 shadow-2xl transition-all duration-300 ${
+            isPanToolActive ? 'cursor-grab active:cursor-grabbing' : ''
+          }`}
           style={{
             background: backdrop.category === 'images' 
               ? `url(${backdrop.value}) center/cover no-repeat` 
@@ -317,8 +439,13 @@ export default function WorkspaceCanvas({
             >
               {/* Position and Scale Wrapper */}
               <div
-                className="pointer-events-auto relative cursor-grab select-none active:cursor-grabbing"
-                onClick={onSelectSubject}
+                className={`pointer-events-auto relative select-none ${
+                  isPanToolActive ? 'cursor-grab' : 'cursor-grab active:cursor-grabbing'
+                }`}
+                onClick={(e) => {
+                  if (isPanToolActive) return;
+                  onSelectSubject();
+                }}
                 onPointerDown={(e) => handlePointerDown(e, 'drag')}
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerUp}
@@ -389,6 +516,73 @@ export default function WorkspaceCanvas({
           </div>
         )}
       </div>
+
+      {/* Floating Canvas Zoom and Pan Tool controls panel */}
+      {originalImg && (
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center bg-zinc-950/90 border border-zinc-800 px-2 py-1.5 rounded-full shadow-2xl backdrop-blur-md transition-all duration-300 gap-1 select-none">
+          {/* Active Hand Mode button */}
+          <button
+            type="button"
+            onClick={() => setIsPanToolActive(!isPanToolActive)}
+            className={`flex h-8 w-8 items-center justify-center rounded-full transition-all duration-300 ${
+              isPanToolActive 
+                ? 'bg-[#D46038] text-white shadow-lg shadow-[#D46038]/25 scale-100' 
+                : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
+            }`}
+            title={isPanToolActive ? "Pan tool active (Click drag canvas to navigate)" : "Activate Navigation Pan Tool (Space or keyboard button)"}
+          >
+            <Hand className="h-4 w-4" />
+          </button>
+
+          <div className="h-4 w-[1px] bg-zinc-800 mx-1" />
+
+          {/* Zoom Out Button */}
+          <button
+            type="button"
+            onClick={() => setZoom(prev => Math.max(prev - 0.25, 0.25))}
+            className="flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 transition hover:text-white hover:bg-zinc-900 active:scale-95 disabled:opacity-30 disabled:pointer-events-none"
+            title="Zoom Out"
+            disabled={zoom <= 0.25}
+          >
+            <ZoomOut className="h-4 w-4" />
+          </button>
+
+          {/* Current Zoom percent Indicator */}
+          <button
+            type="button"
+            onClick={() => { setZoom(1.0); setPan({ x: 0, y: 0 }); }}
+            className="px-2.5 py-1 rounded-md text-[10px] font-mono font-bold text-zinc-350 hover:text-white hover:bg-zinc-900 min-w-[54px] text-center transition"
+            title="Double click or click to reset canvas zoom and view center (100%)"
+          >
+            {Math.round(zoom * 100)}%
+          </button>
+
+          {/* Zoom In Button */}
+          <button
+            type="button"
+            onClick={() => setZoom(prev => Math.min(prev + 0.25, 4.0))}
+            className="flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 transition hover:text-white hover:bg-zinc-900 active:scale-95 disabled:opacity-30 disabled:pointer-events-none"
+            title="Zoom In"
+            disabled={zoom >= 4.0}
+          >
+            <ZoomIn className="h-4 w-4" />
+          </button>
+
+          <div className="h-4 w-[1px] bg-zinc-800 mx-1" />
+
+          {/* Reset Zoom / Fit To Viewport button */}
+          <button
+            type="button"
+            onClick={() => { setZoom(1.0); setPan({ x: 0, y: 0 }); }}
+            className={`flex h-8 w-8 items-center justify-center rounded-full transition text-zinc-400 hover:text-white hover:bg-zinc-900 active:scale-95 ${
+              zoom !== 1.0 || pan.x !== 0 || pan.y !== 0 ? 'text-[#E2906E]' : ''
+            }`}
+            title="Reset Pan and Zoom position"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
