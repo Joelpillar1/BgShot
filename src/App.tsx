@@ -669,7 +669,7 @@ export default function App() {
  
         {/* Right Side: Studio adjustments controls */}
         {originalImg && (
-          <aside className="relative z-25 w-full lg:w-96 select-none border-t border-zinc-900 lg:border-t-0 shadow-2xl bg-[#121214] flex-1 lg:h-full min-h-0 shrink-0 lg:overflow-hidden">
+          <aside className="relative z-25 w-full lg:w-[330px] select-none border-t border-zinc-900 lg:border-t-0 shadow-2xl bg-[#121214] flex-1 lg:flex-none lg:h-full min-h-0 shrink-0 lg:overflow-hidden">
             <ControlPanel
               selectedBackdrop={selectedBackdrop}
               onSelectBackdrop={setSelectedBackdrop}
