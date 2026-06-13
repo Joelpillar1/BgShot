@@ -506,7 +506,7 @@ export default function ControlPanel({
           className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-3 border-b-2 transition ${currentTabClass('filters')}`}
         >
           <Sliders className="h-3.5 w-3.5" />
-          <span>Color Grade</span>
+          <span>Color</span>
         </button>
         <button
           onClick={() => setActiveTab('shadow')}
@@ -520,7 +520,7 @@ export default function ControlPanel({
           className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-3 border-b-2 transition ${currentTabClass('blur')}`}
         >
           <EyeOff className="h-3.5 w-3.5 text-[#E2906E]" />
-          <span className="truncate">Blur / Redact</span>
+          <span className="truncate">Blur</span>
         </button>
       </div>
 
