@@ -569,7 +569,7 @@ export default function App() {
       {/* Main Body */}
       <div className="flex flex-1 flex-col lg:flex-row overflow-hidden min-h-0">
         {/* Left Side: Upload Zone / Live Canvas Compositor Preview */}
-        <main className="relative z-20 flex flex-col justify-between bg-zinc-950 lg:bg-zinc-950/30 border-b border-zinc-900 lg:border-b-0 shrink-0 lg:shrink lg:flex-1 h-[290px] xs:h-[330px] sm:h-[390px] md:h-[450px] lg:h-full lg:overflow-hidden">
+        <main className={`relative z-20 flex flex-col justify-between bg-zinc-950 lg:bg-zinc-950/30 border-b border-zinc-900 lg:border-b-0 shrink-0 lg:shrink lg:flex-1 ${!originalImg ? 'h-full overflow-y-auto' : 'h-[290px] xs:h-[330px] sm:h-[390px] md:h-[450px] lg:h-full lg:overflow-hidden'}`}>
           {!originalImg ? (
             <div className="flex flex-1 items-center justify-center p-6 md:p-12">
               <div className="w-full max-w-sm rounded-[28px] border border-zinc-900 bg-[#121214] p-8 shadow-2xl relative overflow-hidden">
@@ -696,7 +696,30 @@ export default function App() {
         )}
       </div>
 
+      {/* Footer */}
+      <footer className="border-t border-zinc-900 bg-[#121214] px-4 sm:px-6 py-2.5 shrink-0 z-30 flex items-center justify-between gap-4 text-xs text-zinc-500">
+        <div className="flex items-center gap-2 text-[11px]">
+          <span className="font-bold text-zinc-400">BigShort Studio</span>
+          <span className="hidden sm:inline text-zinc-600">•</span>
+          <span className="hidden sm:inline text-zinc-500">Instant 4K Product & Visual Mockups</span>
+        </div>
 
+        <div className="flex items-center gap-3 ml-auto">
+          <a
+            href="https://topsaas.space/product/sub-bigshort-studio?ref=badge"
+            target="_blank"
+            rel="noopener"
+            className="inline-flex items-center hover:opacity-90 transition-opacity active:scale-95"
+          >
+            <img
+              src="https://topsaas.space/Share%20Badge/TopSAAS%20Type%202%20-%20light.png"
+              alt="Featured on TopSAAS"
+              height="36"
+              className="h-8 sm:h-9 w-auto object-contain"
+            />
+          </a>
+        </div>
+      </footer>
 
       {/* PWA Save to Home Screen Modal Assistant */}
       {isInstallModalOpen && (
